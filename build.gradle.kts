@@ -1,4 +1,4 @@
-//import ProjectVersions.unethicaliteVersion
+import ProjectVersions.unethicaliteVersion
 
 buildscript {
     repositories {
@@ -9,20 +9,20 @@ buildscript {
 
 plugins {
     `java-library`
-    //checkstyle
+    checkstyle
     kotlin("jvm") version "1.6.21"
 }
 
-project.extra["GithubUrl"] = "https://github.com/melxin/devious-plugins-extended"
-project.extra["GithubUserName"] = "melxin"
-project.extra["GithubRepoName"] = "devious-plugins-extended"
+project.extra["GithubUrl"] = "https://github.com/MusaSusu/OzonePlugins"
+project.extra["GithubUserName"] = "MusaSuSu"
+project.extra["GithubRepoName"] = "OzonePlugins"
 
 //apply<BootstrapPlugin>()
 
 allprojects {
-    group = "net.unethicalite"
+    group = "OzonePlugins"
 
-    project.extra["PluginProvider"] = "melxin"
+    project.extra["PluginProvider"] = "MusaSuSu"
     project.extra["ProjectSupportUrl"] = ""
     project.extra["PluginLicense"] = "3-Clause BSD License"
 
@@ -37,18 +37,18 @@ allprojects {
     }
 
     dependencies {
-        //annotationProcessor(Libraries.lombok)
-        //annotationProcessor(Libraries.pf4j)
+        annotationProcessor(Libraries.lombok)
+        annotationProcessor(Libraries.pf4j)
 
-        //compileOnly("net.unethicalite:http-api:$unethicaliteVersion+")
-        //compileOnly("net.unethicalite:runelite-api:$unethicaliteVersion+")
-        //compileOnly("net.unethicalite:runelite-client:$unethicaliteVersion+")
-        //compileOnly("net.unethicalite.rs:runescape-api:$unethicaliteVersion+")
+        compileOnly("net.unethicalite:http-api:$unethicaliteVersion+")
+        compileOnly("net.unethicalite:runelite-api:$unethicaliteVersion+")
+        compileOnly("net.unethicalite:runelite-client:$unethicaliteVersion+")
+        compileOnly("net.unethicalite.rs:runescape-api:$unethicaliteVersion+")
 
-        //compileOnly(Libraries.guice)
-        //compileOnly(Libraries.javax)
-        //compileOnly(Libraries.lombok)
-        //compileOnly(Libraries.pf4j)
+        compileOnly(Libraries.guice)
+        compileOnly(Libraries.javax)
+        compileOnly(Libraries.lombok)
+        compileOnly(Libraries.pf4j)
 
         implementation("org.apache.commons:commons-lang3:3.4")
     }
