@@ -1,34 +1,22 @@
 package org.example;
 
 import com.google.inject.Provides;
-import kotlin.text.Regex;
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.events.*;
 import net.runelite.api.widgets.Widget;
-import net.runelite.api.widgets.WidgetInfo;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
-import net.unethicalite.api.entities.TileItems;
-import net.unethicalite.api.entities.TileObjects;
-import net.unethicalite.api.events.MenuAutomated;
-import net.unethicalite.api.input.Keyboard;
 import net.unethicalite.api.items.Inventory;
-import net.unethicalite.api.items.Items;
-import net.unethicalite.api.query.items.ItemQuery;
 import net.unethicalite.api.widgets.Widgets;
-import org.jetbrains.annotations.NotNull;
 import org.pf4j.Extension;
 
 import javax.inject.Inject;
 import java.sql.Time;
 import java.time.LocalTime;
-import java.util.Arrays;
 import java.util.Comparator;
-import java.util.concurrent.Executor;
 
 
 @Extension
