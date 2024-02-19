@@ -1,15 +1,13 @@
 package Ozone.Wintertodt;
 
-import lombok.AccessLevel;
-import lombok.Getter;
+import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.events.*;
+import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
-import net.runelite.client.plugins.wintertodt.config.WintertodtNotifyDamage;
-import net.runelite.client.util.ColorUtil;
 import net.unethicalite.api.entities.Players;
 import net.unethicalite.api.entities.TileObjects;
 import net.unethicalite.api.items.Inventory;
@@ -22,8 +20,6 @@ import java.time.Instant;
 
 import static net.runelite.api.AnimationID.*;
 import static net.runelite.api.AnimationID.CONSTRUCTION_IMCANDO;
-import static net.runelite.client.plugins.wintertodt.config.WintertodtNotifyDamage.ALWAYS;
-import static net.runelite.client.plugins.wintertodt.config.WintertodtNotifyDamage.INTERRUPT;
 
 
 @Extension
@@ -37,12 +33,17 @@ public class WintertodtPlugin extends Plugin {
     private static final int WINTERTODT_REGION = 6462;
     @Inject
     private Client client;
-
+    @Inject
+    private WintertodtConfig config;
+    @Provides
+    WintertodtConfig getConfig(ConfigManager configManager)
+    {
+        return configManager.getConfig(WintertodtConfig.class);
+    }
     private WintertodtActivity currentActivity = WintertodtActivity.IDLE;
     private WintertodtActivity prevActivity = WintertodtActivity.IDLE;
     private boolean isInWintertodt;
     private Instant lastActionTime;
-
     private int tick = 2;
 
     private void reset()
@@ -71,20 +72,32 @@ public class WintertodtPlugin extends Plugin {
         if(event.getMenuTarget().contains("<col=ff9040>Bruma herb</col><col=ffffff> -> "))
         {
             client.setSelectedSpellWidget(9764864);
-            client.setSelectedSpellChildIndex(Inventory.getFirst("Bruma herb").getSlot());
+            client.setSelectedSpellChildIndex(Inventory.getFirst(ItemID.BRUMA_HERB).getSlot());
             client.setSelectedSpellItemId(ItemID.BRUMA_HERB);
             return;
         }
+
+        if(event.getMenuTarget().contains("<col=ff9040>Bruma root</col><col=ffffff> -> "))
+        {
+            client.setSelectedSpellWidget(9764864);
+            client.setSelectedSpellChildIndex(Inventory.getFirst(ItemID.BRUMA_ROOT).getSlot());
+            client.setSelectedSpellItemId(ItemID.BRUMA_ROOT);
+            return;
+        }
+        /*
         System.out.println(event.toString());
         System.out.println(client.getSelectedSpellWidget());
         System.out.println(client.getSelectedSpellChildIndex());
         System.out.println(client.getSelectedSpellChildIndex());
+
+         */
     }
 
     @Subscribe
     private void onMenuEntryAdded(MenuEntryAdded event)
     {
         createPotionMenu(event);
+        createKnifeMenu(event);
     }
 
     private void createPotionMenu(MenuEntryAdded event) {
@@ -98,7 +111,26 @@ public class WintertodtPlugin extends Plugin {
         }
         client.createMenuEntry(client.getMenuOptionCount())
                 .setOption("Use")
-                .setTarget("<col=ff9040>Jug of water</col><col=ffffff> -> " + event.getTarget())
+                .setTarget("<col=ff9040>Bruma herb</col><col=ffffff> -> " + event.getTarget())
+                .setType(MenuAction.WIDGET_TARGET_ON_WIDGET)
+                .setIdentifier(0)
+                .setParam0(event.getActionParam0())
+                .setParam1(9764864)
+                .setForceLeftClick(true);
+    }
+
+    private void createKnifeMenu(MenuEntryAdded event) {
+        if (!event.getOption().contains("Use") ||
+                !event.getTarget().contains("Knife") ||
+                event.isForceLeftClick() ||
+                !Inventory.contains(ItemID.BRUMA_ROOT)
+        )
+        {
+            return;
+        }
+        client.createMenuEntry(client.getMenuOptionCount())
+                .setOption("Use")
+                .setTarget("<col=ff9040>Bruma root</col><col=ffffff> -> " + event.getTarget())
                 .setType(MenuAction.WIDGET_TARGET_ON_WIDGET)
                 .setIdentifier(0)
                 .setParam0(event.getActionParam0())
@@ -109,6 +141,11 @@ public class WintertodtPlugin extends Plugin {
     @Subscribe
     public void onGameTick(GameTick gameTick)
     {
+        if (tick > 0)
+        {
+            tick--;
+            return;
+        }
         if (!isInWintertodtRegion())
         {
             if (isInWintertodt)
@@ -119,24 +156,33 @@ public class WintertodtPlugin extends Plugin {
             }
             return;
         }
-
         if (!isInWintertodt)
         {
             reset();
             log.debug("Entered Wintertodt!");
             isInWintertodt = true;
         }
-
+        if (checkHealth()) {return;}
         checkActionTimeout();
+    }
+
+    private boolean checkHealth()
+    {
+        if (client.getBoostedSkillLevel(Skill.HITPOINTS) < config.getHPThresh())
+        {
+            Item food = Inventory.getFirst(x-> x.hasAction("Eat"));
+            if (food != null)
+            {
+                food.interact("Eat");
+            }
+            this.tick = 2;
+            return true;
+        }
+        return false;
     }
 
     private void checkActionTimeout()
     {
-        if (tick > 0)
-        {
-            tick--;
-            return;
-        }
         if (prevActivity != null )
         {
             resumeActivity();
@@ -229,18 +275,7 @@ public class WintertodtPlugin extends Plugin {
         switch (interruptType)
         {
             case COLD:
-                if (currentActivity != WintertodtActivity.WOODCUTTING && currentActivity != WintertodtActivity.IDLE)
-                {
-                    prevActivity  = currentActivity;
-                    wasInterrupted = true;
-                }
-                break;
             case BRAZIER:
-                if(currentActivity != WintertodtActivity.IDLE)
-                {
-                    prevActivity = currentActivity;
-                    wasInterrupted = true;
-                }
             case SNOWFALL:
 
                 // Recolor message for damage notification
@@ -252,34 +287,42 @@ public class WintertodtPlugin extends Plugin {
                     prevActivity  = currentActivity;
                     wasInterrupted = true;
                 }
-
                 break;
             case INVENTORY_FULL:
             case OUT_OF_ROOTS:
+                break;
             case BRAZIER_WENT_OUT:
-                wasInterrupted = true;
                 if (currentActivity == WintertodtActivity.FEEDING_BRAZIER)
                 {
                     prevActivity = WintertodtActivity.LIGHTING_BRAZIER;
                 }
                 break;
             case LIT_BRAZIER:
+                if(Inventory.getFirst(ItemID.BRUMA_ROOT, ItemID.BRUMA_KINDLING) == null)
+                {
+                    break;
+                }
                 prevActivity = WintertodtActivity.FEEDING_BRAZIER;
+                break;
             case FIXED_BRAZIER:
                 prevActivity = WintertodtActivity.LIGHTING_BRAZIER;
-                wasInterrupted = true;
                 break;
         }
         if (wasInterrupted)
         {
             if (prevActivity == WintertodtActivity.FLETCHING)
             {
-                this.tick = 2;
+                if (checkHealth()) //needed since state gets to changed idle if we are below 20
+                {
+                    return;
+                }
+                else
+                {
+                    this.tick = 2;
+                }
             }
-            currentActivity = WintertodtActivity.IDLE;
         }
     }
-
     @Subscribe
     public void onAnimationChanged(final AnimationChanged event)
     {
@@ -344,7 +387,23 @@ public class WintertodtPlugin extends Plugin {
                 break;
         }
     }
-
+    @Subscribe
+    private void onNpcChanged(NpcChanged e)
+    {
+        System.out.println("NPC change");
+        if (
+                config.isRevive() &&
+                        e.getNpc().getId() == NpcID.INCAPACITATED_PYROMANCER &&
+                        e.getNpc().distanceTo(Players.getLocal().getWorldLocation()) < 7 &&
+                        Inventory.contains(ItemID.REJUVENATION_POTION_1,
+                                ItemID.REJUVENATION_POTION_2,
+                                ItemID.REJUVENATION_POTION_3,
+                                ItemID.REJUVENATION_POTION_4)
+        )
+        {
+            e.getNpc().interact("Help");
+        }
+    }
     private void setActivity(WintertodtActivity action)
     {
         currentActivity = action;
@@ -376,5 +435,4 @@ public class WintertodtPlugin extends Plugin {
         }
         prevActivity = null;
     }
-
 }
