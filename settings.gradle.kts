@@ -3,6 +3,7 @@ rootProject.name = "OzonePlugins"
 include(":Cooking")
 include("Wintertodt")
 include("OzoneCannon")
+include("PestControl")
 
 for (project in rootProject.children) {
     project.apply {

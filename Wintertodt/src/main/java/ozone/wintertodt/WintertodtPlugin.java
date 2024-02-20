@@ -390,7 +390,6 @@ public class WintertodtPlugin extends Plugin {
     @Subscribe
     private void onNpcChanged(NpcChanged e)
     {
-        System.out.println("NPC change");
         if (
                 config.isRevive() &&
                         e.getNpc().getId() == NpcID.INCAPACITATED_PYROMANCER &&
