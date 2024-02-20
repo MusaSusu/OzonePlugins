@@ -23,23 +23,21 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package Ozone.Wintertodt;
+package ozone.wintertodt;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 @AllArgsConstructor
 @Getter
-enum WintertodtInterruptType
+enum WintertodtActivity
 {
-	COLD("Damaged by Wintertodt Cold"),
-	SNOWFALL("Damaged by Wintertodt Snowfall"),
-	BRAZIER("Brazier Shattered"),
-	INVENTORY_FULL("Inventory full of Bruma Roots"),
-	OUT_OF_ROOTS("Out of Bruma Roots"),
-	FIXED_BRAZIER("Fixed Brazier"),
-	LIT_BRAZIER("Lit Brazier"),
-	BRAZIER_WENT_OUT("Brazier went out");
+	IDLE("IDLE"),
+	WOODCUTTING("Woodcutting"),
+	FLETCHING("Fletching"),
+	FEEDING_BRAZIER("Feeding"),
+	FIXING_BRAZIER("Fixing"),
+	LIGHTING_BRAZIER("Lighting");
 
-	private final String interruptSourceString;
+	private final String actionString;
 }

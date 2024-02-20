@@ -1,9 +1,8 @@
-package Ozone.Wintertodt;
+package ozone.wintertodt;
 
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
-import net.runelite.client.config.ConfigSection;
 
 @ConfigGroup("Ozone-WintertodtConfig")
 public interface WintertodtConfig extends Config {

@@ -1,4 +1,4 @@
-package Ozone.Wintertodt;
+package ozone.wintertodt;
 
 import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
