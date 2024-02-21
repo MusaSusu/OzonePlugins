@@ -23,7 +23,8 @@ import javax.inject.Inject;
 @Extension
 @PluginDescriptor(
         name = "Ozone Pest Control",
-        description = "Pest Control Assistant"
+        description = "Pest Control Assistant",
+        tags = {"Minigame","Ozone"}
 )
 @Slf4j
 public class PestControl extends Plugin {

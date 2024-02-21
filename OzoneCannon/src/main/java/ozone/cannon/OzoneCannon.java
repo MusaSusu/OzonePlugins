@@ -20,7 +20,8 @@ import javax.inject.Inject;
 @Extension
 @PluginDescriptor(
         name = "Ozone cannon reloader",
-        description = "Automically reloads cannon"
+        description = "Automically reloads cannon",
+        tags = {"Ozone"}
 )
 @Slf4j
 public class OzoneCannon extends Plugin {

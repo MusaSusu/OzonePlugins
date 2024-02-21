@@ -25,7 +25,8 @@ import static net.runelite.api.AnimationID.CONSTRUCTION_IMCANDO;
 @Extension
 @PluginDescriptor(
         name = " Wintertodt Assistant",
-        description = "Helps with Wintertodt"
+        description = "Helps with Wintertodt",
+        tags = {"Minigame","Ozone"}
 )
 @Slf4j
 public class WintertodtPlugin extends Plugin {

@@ -22,7 +22,8 @@ import java.util.Comparator;
 @Extension
 @PluginDescriptor(
         name = " Ozone Cooking Assist",
-        description = "Helps with cooking"
+        description = "Helps with cooking",
+        tags = {"Ozone","Skilling"}
 )
 @Slf4j
 public class Cooking extends Plugin {
