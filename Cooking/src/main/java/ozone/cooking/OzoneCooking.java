@@ -87,7 +87,6 @@ public class OzoneCooking extends Plugin {
     public void onWidgetLoaded(WidgetLoaded e) {
         if (e.getGroupId() == 270) {
             this.isWidgetOpen = true;
-            System.out.println("widget loaded:" + Time.valueOf(LocalTime.now()));
         }
     }
 
