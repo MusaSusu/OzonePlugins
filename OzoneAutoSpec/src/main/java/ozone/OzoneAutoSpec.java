@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.events.GameStateChanged;
+import net.runelite.api.widgets.Widget;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.input.KeyManager;
@@ -12,9 +13,11 @@ import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.util.HotkeyListener;
 import net.unethicalite.api.game.Combat;
+import net.unethicalite.api.widgets.Widgets;
 import org.pf4j.Extension;
 
 import javax.inject.Inject;
+import java.util.function.Supplier;
 
 
 @Extension
@@ -34,6 +37,10 @@ public class OzoneAutoSpec extends Plugin {
 
     @Inject
     private OzoneAutoSpecConfig config;
+
+    private static final Supplier<Widget> SPEC_BUTTON = () -> {
+        return Widgets.get(593, 36);
+    };
 
     @Provides
     private OzoneAutoSpecConfig getConfig(ConfigManager configManager){
@@ -70,11 +77,22 @@ public class OzoneAutoSpec extends Plugin {
     {
         if (Combat.isSpecEnabled())
         {
+            if(!config.alwaysSpec()){
+                Widget spec = (Widget) SPEC_BUTTON.get();
+                if (spec!= null)
+                {
+                    spec.interact(0);
+                }
+            }
             return;
         }
         else
         {
-            Combat.toggleSpec();
+            Widget spec = (Widget) SPEC_BUTTON.get();
+            if (spec != null)
+            {
+                spec.interact(0);
+            }
         }
     }
     private final HotkeyListener autoSpec = new HotkeyListener(() -> config.getSpecHotkey())
