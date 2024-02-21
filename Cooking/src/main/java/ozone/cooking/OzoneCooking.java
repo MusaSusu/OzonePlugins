@@ -26,13 +26,13 @@ import java.util.Comparator;
         tags = {"Ozone","Skilling"}
 )
 @Slf4j
-public class Cooking extends Plugin {
+public class OzoneCooking extends Plugin {
 
     @Inject
     private Client client;
 
     @Inject
-    private CookingConfig config;
+    private OzoneCookingConfig config;
 
     private boolean isWidgetOpen = false;
     private boolean hasKarambwan = false;
@@ -40,9 +40,9 @@ public class Cooking extends Plugin {
     private boolean tick = false;
 
     @Provides
-    CookingConfig getConfig(ConfigManager configManager)
+    OzoneCookingConfig getConfig(ConfigManager configManager)
     {
-        return configManager.getConfig(CookingConfig.class);
+        return configManager.getConfig(OzoneCookingConfig.class);
     }
 
 
@@ -181,7 +181,6 @@ public class Cooking extends Plugin {
                 .setParam1(9764864)
                 .setForceLeftClick(true);
     }
-
 
     private boolean hasFoodInInventory() {
         Item item = Inventory.getFirst(config.getFoods());

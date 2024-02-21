@@ -6,7 +6,7 @@ import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
 
 @ConfigGroup("Ozone-CookingConfig")
-public interface CookingConfig extends Config {
+public interface OzoneCookingConfig extends Config {
     @ConfigSection(
             position = 0,
             keyName = "One Click Cooking",

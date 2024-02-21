@@ -24,25 +24,25 @@ import static net.runelite.api.AnimationID.CONSTRUCTION_IMCANDO;
 
 @Extension
 @PluginDescriptor(
-        name = " Wintertodt Assistant",
+        name = " Ozone Wintertodt Assistant",
         description = "Helps with Wintertodt",
         tags = {"Minigame","Ozone"}
 )
 @Slf4j
-public class WintertodtPlugin extends Plugin {
+public class OzoneWintertodtPlugin extends Plugin {
 
     private static final int WINTERTODT_REGION = 6462;
     @Inject
     private Client client;
     @Inject
-    private WintertodtConfig config;
+    private OzoneWintertodtConfig config;
     @Provides
-    WintertodtConfig getConfig(ConfigManager configManager)
+    OzoneWintertodtConfig getConfig(ConfigManager configManager)
     {
-        return configManager.getConfig(WintertodtConfig.class);
+        return configManager.getConfig(OzoneWintertodtConfig.class);
     }
-    private WintertodtActivity currentActivity = WintertodtActivity.IDLE;
-    private WintertodtActivity prevActivity = WintertodtActivity.IDLE;
+    private OzoneWintertodtActivity currentActivity = OzoneWintertodtActivity.IDLE;
+    private OzoneWintertodtActivity prevActivity = OzoneWintertodtActivity.IDLE;
     private boolean isInWintertodt;
     private Instant lastActionTime;
     private int tick = 2;
@@ -53,7 +53,7 @@ public class WintertodtPlugin extends Plugin {
         //totalPotentialinventoryScore = 0;
         //numLogs = 0;
         //numKindling = 0;
-        currentActivity = WintertodtActivity.IDLE;
+        currentActivity = OzoneWintertodtActivity.IDLE;
         lastActionTime = null;
     }
 
@@ -189,7 +189,7 @@ public class WintertodtPlugin extends Plugin {
             resumeActivity();
             return;
         }
-        if (currentActivity == WintertodtActivity.IDLE)
+        if (currentActivity == OzoneWintertodtActivity.IDLE)
         {
             return;
         }
@@ -206,7 +206,7 @@ public class WintertodtPlugin extends Plugin {
         if (sinceAction.compareTo(actionTimeout) >= 0)
         {
             System.out.println("Activity timeout!");
-            currentActivity = WintertodtActivity.IDLE;
+            currentActivity = OzoneWintertodtActivity.IDLE;
         }
     }
 
@@ -226,45 +226,45 @@ public class WintertodtPlugin extends Plugin {
         }
 
         MessageNode messageNode = chatMessage.getMessageNode();
-        final WintertodtInterruptType interruptType;
+        final OzoneWintertodtInterruptType interruptType;
 
         if (messageNode.getValue().startsWith("You carefully fletch the root"))
         {
-            setActivity(WintertodtActivity.FLETCHING);
+            setActivity(OzoneWintertodtActivity.FLETCHING);
             return;
         }
 
         if (messageNode.getValue().startsWith("The cold of"))
         {
-            interruptType = WintertodtInterruptType.COLD;
+            interruptType = OzoneWintertodtInterruptType.COLD;
         }
         else if (messageNode.getValue().startsWith("The freezing cold attack"))
         {
-            interruptType = WintertodtInterruptType.SNOWFALL;
+            interruptType = OzoneWintertodtInterruptType.SNOWFALL;
         }
         else if (messageNode.getValue().startsWith("The brazier is broken and shrapnel damages you"))
         {
-            interruptType = WintertodtInterruptType.BRAZIER;
+            interruptType = OzoneWintertodtInterruptType.BRAZIER;
         }
         else if (messageNode.getValue().startsWith("You have run out of bruma roots"))
         {
-            interruptType = WintertodtInterruptType.OUT_OF_ROOTS;
+            interruptType = OzoneWintertodtInterruptType.OUT_OF_ROOTS;
         }
         else if (messageNode.getValue().startsWith("Your inventory is too full"))
         {
-            interruptType = WintertodtInterruptType.INVENTORY_FULL;
+            interruptType = OzoneWintertodtInterruptType.INVENTORY_FULL;
         }
         else if (messageNode.getValue().startsWith("You fix the brazier"))
         {
-            interruptType = WintertodtInterruptType.FIXED_BRAZIER;
+            interruptType = OzoneWintertodtInterruptType.FIXED_BRAZIER;
         }
         else if (messageNode.getValue().startsWith("You light the brazier"))
         {
-            interruptType = WintertodtInterruptType.LIT_BRAZIER;
+            interruptType = OzoneWintertodtInterruptType.LIT_BRAZIER;
         }
         else if (messageNode.getValue().startsWith("The brazier has gone out."))
         {
-            interruptType = WintertodtInterruptType.BRAZIER_WENT_OUT;
+            interruptType = OzoneWintertodtInterruptType.BRAZIER_WENT_OUT;
         }
         else
         {
@@ -283,7 +283,7 @@ public class WintertodtPlugin extends Plugin {
                 client.refreshChat();
 
                 // all actions except woodcutting and idle are interrupted from damage
-                if (currentActivity != WintertodtActivity.WOODCUTTING && currentActivity != WintertodtActivity.IDLE)
+                if (currentActivity != OzoneWintertodtActivity.WOODCUTTING && currentActivity != OzoneWintertodtActivity.IDLE)
                 {
                     prevActivity  = currentActivity;
                     wasInterrupted = true;
@@ -293,9 +293,9 @@ public class WintertodtPlugin extends Plugin {
             case OUT_OF_ROOTS:
                 break;
             case BRAZIER_WENT_OUT:
-                if (currentActivity == WintertodtActivity.FEEDING_BRAZIER)
+                if (currentActivity == OzoneWintertodtActivity.FEEDING_BRAZIER)
                 {
-                    prevActivity = WintertodtActivity.LIGHTING_BRAZIER;
+                    prevActivity = OzoneWintertodtActivity.LIGHTING_BRAZIER;
                 }
                 break;
             case LIT_BRAZIER:
@@ -303,15 +303,15 @@ public class WintertodtPlugin extends Plugin {
                 {
                     break;
                 }
-                prevActivity = WintertodtActivity.FEEDING_BRAZIER;
+                prevActivity = OzoneWintertodtActivity.FEEDING_BRAZIER;
                 break;
             case FIXED_BRAZIER:
-                prevActivity = WintertodtActivity.LIGHTING_BRAZIER;
+                prevActivity = OzoneWintertodtActivity.LIGHTING_BRAZIER;
                 break;
         }
         if (wasInterrupted)
         {
-            if (prevActivity == WintertodtActivity.FLETCHING)
+            if (prevActivity == OzoneWintertodtActivity.FLETCHING)
             {
                 if (checkHealth()) //needed since state gets to changed idle if we are below 20
                 {
@@ -367,24 +367,24 @@ public class WintertodtPlugin extends Plugin {
             case WOODCUTTING_2H_CRYSTAL:
             case WOODCUTTING_2H_CRYSTAL_INACTIVE:
             case WOODCUTTING_2H_3A:
-                setActivity(WintertodtActivity.WOODCUTTING);
+                setActivity(OzoneWintertodtActivity.WOODCUTTING);
                 break;
 
             case FLETCHING_BOW_CUTTING:
-                setActivity(WintertodtActivity.FLETCHING);
+                setActivity(OzoneWintertodtActivity.FLETCHING);
                 break;
 
             case LOOKING_INTO:
-                setActivity(WintertodtActivity.FEEDING_BRAZIER);
+                setActivity(OzoneWintertodtActivity.FEEDING_BRAZIER);
                 break;
 
             case FIREMAKING:
-                setActivity(WintertodtActivity.LIGHTING_BRAZIER);
+                setActivity(OzoneWintertodtActivity.LIGHTING_BRAZIER);
                 break;
 
             case CONSTRUCTION:
             case CONSTRUCTION_IMCANDO:
-                setActivity(WintertodtActivity.FIXING_BRAZIER);
+                setActivity(OzoneWintertodtActivity.FIXING_BRAZIER);
                 break;
         }
     }
@@ -404,7 +404,7 @@ public class WintertodtPlugin extends Plugin {
             e.getNpc().interact("Help");
         }
     }
-    private void setActivity(WintertodtActivity action)
+    private void setActivity(OzoneWintertodtActivity action)
     {
         currentActivity = action;
         lastActionTime = Instant.now();

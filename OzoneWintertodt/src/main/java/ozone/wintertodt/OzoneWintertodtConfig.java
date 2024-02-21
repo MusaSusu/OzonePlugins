@@ -5,7 +5,7 @@ import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 
 @ConfigGroup("Ozone-WintertodtConfig")
-public interface WintertodtConfig extends Config {
+public interface OzoneWintertodtConfig extends Config {
     @ConfigItem(
             position = 0,
             keyName = "Revive Pyromancer",

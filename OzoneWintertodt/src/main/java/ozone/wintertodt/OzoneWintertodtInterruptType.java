@@ -30,7 +30,7 @@ import lombok.Getter;
 
 @AllArgsConstructor
 @Getter
-enum WintertodtInterruptType
+enum OzoneWintertodtInterruptType
 {
 	COLD("Damaged by Wintertodt Cold"),
 	SNOWFALL("Damaged by Wintertodt Snowfall"),

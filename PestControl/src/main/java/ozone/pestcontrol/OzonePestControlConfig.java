@@ -5,7 +5,7 @@ import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 
 @ConfigGroup("Ozone Pest Control Config")
-public interface PestControlConfig extends Config {
+public interface OzonePestControlConfig extends Config {
     @ConfigItem(
             keyName = "Quickprayers",
             name = "Enable quickprayers",

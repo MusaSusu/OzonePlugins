@@ -30,7 +30,7 @@ import lombok.Getter;
 
 @AllArgsConstructor
 @Getter
-enum WintertodtActivity
+enum OzoneWintertodtActivity
 {
 	IDLE("IDLE"),
 	WOODCUTTING("Woodcutting"),
