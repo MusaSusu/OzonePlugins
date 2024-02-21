@@ -4,6 +4,7 @@ include(":Cooking")
 include(":OzoneWintertodt")
 include(":OzoneCannon")
 include(":PestControl")
+include("OzoneAutoSpec")
 
 for (project in rootProject.children) {
     project.apply {
