@@ -24,7 +24,7 @@ import java.util.function.Supplier;
 @PluginDescriptor(
         name = " Ozone AutoSpec Assist",
         description = "AutoSpec with Hotkey",
-        tags = {"Ozone","Hotkey"}
+        tags = {"Ozone","Hotkey","Combat"}
 )
 @Slf4j
 public class OzoneAutoSpec extends Plugin {
