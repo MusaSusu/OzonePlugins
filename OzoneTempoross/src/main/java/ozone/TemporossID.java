@@ -28,7 +28,7 @@ public interface TemporossID
 	int NPC_CLOUD = 10580;
 	int NPC_FIRE = 8643;
 	int NPC_AMMO_CRATE = 10576;
-	int NPC_EXIT = 10595;
+	int NPC_EXIT = 10597;
 	int NPC_INIT_WHIRLPOOL = 10570;
 	int NPC_VULN_WHIRLPOOL = 10571;
 	int NPC_VULN_TEMPOROSS = 10574;
