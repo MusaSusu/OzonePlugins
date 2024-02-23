@@ -20,6 +20,7 @@ public class TemporossWorkArea
 	private final WorldPoint mastPoint;
 	private final WorldPoint totemPoint;
 	private final WorldPoint rangePoint;
+	private final WorldPoint fishingPoint;
 
 	public TemporossWorkArea(WorldPoint exitNpc, boolean isWest)
 	{
@@ -36,6 +37,7 @@ public class TemporossWorkArea
 			this.mastPoint = exitNpc.dx(0).dy(-3);
 			this.totemPoint = exitNpc.dx(8).dy(15);
 			this.rangePoint = exitNpc.dx(3).dy(21);
+			this.fishingPoint = exitNpc.dx(11).dy(4);
 		}
 		else
 		{
@@ -47,6 +49,7 @@ public class TemporossWorkArea
 			this.mastPoint = exitNpc.dx(0).dy(3);
 			this.totemPoint = exitNpc.dx(-15).dy(-13);
 			this.rangePoint = exitNpc.dx(-23).dy(-19);
+			this.fishingPoint = exitNpc.dx(-11).dy(-4);
 		}
 	}
 
