@@ -16,9 +16,14 @@ import net.runelite.client.input.KeyManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.util.HotkeyListener;
+import net.unethicalite.api.commons.Time;
 import net.unethicalite.api.entities.Players;
+import net.unethicalite.api.game.Combat;
+import net.unethicalite.api.items.Inventory;
 import net.unethicalite.api.movement.Movement;
 import net.unethicalite.api.widgets.Prayers;
+import net.unethicalite.api.widgets.Tab;
+import net.unethicalite.api.widgets.Tabs;
 import org.pf4j.Extension;
 import ozone.zulrah.data.GearSetup;
 import ozone.zulrah.data.StandLocation;
@@ -30,8 +35,9 @@ import ozone.zulrah.rotationutils.ZulrahPhase;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
@@ -51,7 +57,7 @@ public class OzoneZulrahPlugin extends Plugin {
     private OzoneZulrahConfig config;
     @Inject
     private KeyManager keyManager;
-    private ScheduledExecutorService executor;
+    private ExecutorService executor;
     private NPC zulrahNpc = null;
     private int stage = 0;
     private int phaseTicks = -1;
@@ -74,11 +80,12 @@ public class OzoneZulrahPlugin extends Plugin {
     private boolean shouldAttack;
     private boolean shouldPray;
     private boolean shouldChangeGear;
-
     private int attacksLeft = 0;
     private LocalPoint dest;
     private LocalPoint nextDest;
-
+    private static volatile boolean isBlocking = false;
+    private static CompletableFuture<?> blockingTask;
+    private ZulrahType gearState;
 
     private final BiConsumer<RotationType, RotationType> phaseTicksHandler = (current, potential) -> {
         if (zulrahReset)
@@ -111,7 +118,15 @@ public class OzoneZulrahPlugin extends Plugin {
 
         ZulrahType.setMagePhaseGear(new GearSetup(rangeGearNames));
         ZulrahType.setRangedMeleePhaseGear(new GearSetup(mageGearNames));
-        executor = Executors.newSingleThreadScheduledExecutor();
+        executor = Executors.newSingleThreadExecutor();
+
+/*
+        if (client.getGameState() == GameState.LOGGED_IN)
+        {
+            keyManager.registerKeyListener(gearSwitcher);
+        }
+
+ */
     }
 
     @Override
@@ -120,6 +135,7 @@ public class OzoneZulrahPlugin extends Plugin {
         System.out.println("SHUTDOWN");
         reset();
         executor.shutdownNow();
+        keyManager.unregisterKeyListener(gearSwitcher);
     }
 
     @Subscribe
@@ -149,6 +165,7 @@ public class OzoneZulrahPlugin extends Plugin {
                 dest = StandLocation.NORTHEAST_TOP.toLocalPoint();
                 this.attacksLeft = 9;
                 shouldAttack = true;
+                execBlocking(this::changePrays);
                 break;
             }
             case 5073:
@@ -162,12 +179,18 @@ public class OzoneZulrahPlugin extends Plugin {
                     currentRotation = potentialRotations.size() == 1 ? potentialRotations.get(0) : null;
                 }
                 //phaseTicksHandler.accept(currentRotation, potentialRotations.get(0));
+                System.out.println(currentRotation);
+
+                if(stage == 1)
+                {
+                    shouldChangeGear = true;
+                    this.gearState = getCurrentPhase().getZulrahNpc().getType();
+                }
+
                 setAttacksLeft();
                 setNextDest();
-                System.out.println(currentRotation);
                 shouldAttack = true;
-                shouldChangeGear = true;
-                changePrays();
+                execBlocking(this::changePrays);
                 break;
             }
             case 5072:
@@ -185,6 +208,13 @@ public class OzoneZulrahPlugin extends Plugin {
                 {
                     zulrahReset = false;
                 }
+
+                if(stage > 0)
+                {
+                    shouldChangeGear = true;
+                    this.gearState = currentRotation == null ? getNextPhase(potentialRotations.get(0)).getZulrahNpc().getType() : getNextPhase(currentRotation).getZulrahNpc().getType(); ;
+                }
+
                 if (currentRotation == null || !isLastPhase(currentRotation)) break;
                 stage = -1;
                 currentRotation = null;
@@ -207,6 +237,7 @@ public class OzoneZulrahPlugin extends Plugin {
                     setDest();
                 }
                 if (currentRotation == null || !getCurrentPhase().getZulrahNpc().isJad()) break;
+                execBlocking(this::changeJadPrays);
                 flipPhasePrayer = !flipPhasePrayer;
                 break;
             }
@@ -235,68 +266,70 @@ public class OzoneZulrahPlugin extends Plugin {
                 break;
             case 5804:
             {
+                //zuralh death anim
                 reset();
             }
         }
     }
 
     @Subscribe
-    private void onGameTick(GameTick event)
-    {
-        if (client.getGameState() != GameState.LOGGED_IN || zulrahNpc == null)
-        {
+    private void onGameTick(GameTick event) {
+        if (client.getGameState() != GameState.LOGGED_IN || zulrahNpc == null) {
             return;
         }
         ++totalTicks;
-        if (attackTicks >= 0)
-        {
+        if (attackTicks > 0) {
             --attackTicks;
         }
-        if (phaseTicks >= 0)
-        {
+        if (phaseTicks >= 0) {
             --phaseTicks;
         }
-        if (!projectilesMap.isEmpty())
-        {
+        if (!projectilesMap.isEmpty()) {
             projectilesMap.values().removeIf(v -> v <= 0);
             projectilesMap.replaceAll((k, v) -> v - 1);
         }
-        if (!toxicCloudsMap.isEmpty())
-        {
+        if (!toxicCloudsMap.isEmpty()) {
             toxicCloudsMap.values().removeIf(v -> v <= 0);
             toxicCloudsMap.replaceAll((k, v) -> v - 1);
         }
-        if (dest != null)
+        if(playerAttackTicks >0)
         {
-            if(movementTicks > 0)
+            playerAttackTicks--;
+        }
+        if (isBlocking) {
+            return;
+        }
+        if (dest != null) {
+            if (movementTicks > 0)
             {
                 movementTicks--;
-            }
-            else {
+            } else {
                 moveToTile();
                 return;
             }
         }
-        /*
-        if(shouldChangeGear)
-        {
-            switchGear();
+        if (shouldChangeGear) {
+            execBlocking(this::switchGear);
             return;
         }
-         */
-        /*
-        if(shouldAttack)
+        if (checkHealth()) {
+            return;
+        }
+        if(checkPrayer())
         {
-            if(attackTicks > 0)
-            {
-                attackTicks--;
-            }
-            else
-            {
+            return;
+        }
+        if(checkPoison())
+        {
+            return;
+        }
+        if (shouldAttack) {
+            if (playerAttackTicks > 0) {
+                return;
+            } else {
                 attackZulrah();
             }
         }
-         */
     }
 
     @Nullable
@@ -372,13 +405,77 @@ public class OzoneZulrahPlugin extends Plugin {
         }
     }
 
+    private boolean checkHealth()
+    {
+        if (client.getBoostedSkillLevel(Skill.HITPOINTS) < 50)
+        {
+            Item food1 = Inventory.getFirst(x-> x.getId() == ItemID.SHARK);
+            Item food2 = Inventory.getFirst(x-> x.getId() == ItemID.COOKED_KARAMBWAN);
+            if (food1 != null & food2 != null )
+            {
+                execBlocking(()-> {
+                    food1.interact("Eat");
+                    Time.sleep(20);
+                    food2.interact("Eat");
+                });
+                return true;
+            }
+            else if (food1 != null)
+            {
+                food1.interact("Eat");
+                return true;
+            }
+            else
+            {
+                //should tp out
+                return false;
+            }
+        }
+        return false;
+    }
+
+    private boolean checkPrayer()
+    {
+        if (client.getBoostedSkillLevel(Skill.PRAYER) < 20)
+        {
+            Item pot = Inventory.getFirst(x-> x.getName().contains("Prayer potion"));
+            if (pot != null)
+            {
+                pot.interact("Drink");
+                return true;
+            }
+            else
+            {
+                //should tp out
+                return false;
+            }
+        }
+        return false;
+    }
+
+    private boolean checkPoison()
+    {
+        if (Combat.isPoisoned())
+        {
+            Item pot = Inventory.getFirst(x-> x.getName().contains("Anti-venom"));
+            if(pot != null)
+            {
+                pot.interact("Drink");
+                return true;
+            }
+            else {
+                //should tp out
+                return false;
+            }
+        }
+        return false;
+    }
     private void attackZulrah()
     {
         if(!Players.getLocal().isInteracting())
         {
             zulrahNpc.interact("Attack");
-            attackTicks = 3;
-            movementTicks=1;
+            attackTicks = 4;
         }
     }
 
@@ -388,8 +485,11 @@ public class OzoneZulrahPlugin extends Plugin {
         WorldPoint target = WorldPoint.fromLocal(client,dest);
         if (Players.getLocal().getWorldLocation().distanceTo(target)>0)
         {
-            Movement.walk(target);
-            movementTicks = 4;
+            if(!Movement.isWalking())
+            {
+                Movement.walk(target);
+                movementTicks = 2;
+            }
         }
         else {
             dest = null;
@@ -399,36 +499,110 @@ public class OzoneZulrahPlugin extends Plugin {
     private void changePrays()
     {
         Prayer prayer = getCurrentPhase().getAttributes().getPrayer();
+        Prayer damagePrayer = getCurrentPhase().getZulrahNpc().getType() == ZulrahType.MAGIC ? config.rangePrayer().getPrayer() : config.magePrayer().getPrayer();
+
+        if(!Tabs.isOpen(Tab.PRAYER))
+        {
+            Tabs.open(Tab.PRAYER);
+        }
         if(prayer == null)
         {
-            return;
         }
-        if(!Prayers.isEnabled(prayer))
+        else if(!Prayers.isEnabled(prayer))
         {
             Prayers.toggle(prayer);
         }
-        return;
-    }
-    private void switchGear()
-    {
-        ZulrahType state = getCurrentPhase().getZulrahNpc().getType();
-        if (state == ZulrahType.MAGIC)
+        if(!Prayers.isEnabled(damagePrayer))
         {
-            executor.execute(()->ZulrahType.MAGIC.getSetup().switchGear(50));
-            shouldChangeGear = false;
+            Prayers.toggle(damagePrayer);
+        }
+    }
+
+    private void changeJadPrays()
+    {
+        if (flipPhasePrayer)
+        {
+            Prayer prayer = getCurrentPhase().getAttributes().getPrayer();
+            if(!Tabs.isOpen(Tab.PRAYER))
+            {
+                Tabs.open(Tab.PRAYER);
+            }
+            if (prayer == Prayer.PROTECT_FROM_MAGIC)
+            {
+                if(!Prayers.isEnabled(Prayer.PROTECT_FROM_MISSILES))
+                {
+                    Prayers.toggle(Prayer.PROTECT_FROM_MISSILES);
+                }
+            }
+            else
+            {
+                if(!Prayers.isEnabled(Prayer.PROTECT_FROM_MAGIC))
+                {
+                    Prayers.toggle(Prayer.PROTECT_FROM_MAGIC);
+                }
+            }
         }
         else
         {
-           executor.execute(()->ZulrahType.RANGE.getSetup().switchGear(50));
-           shouldChangeGear = false;
+            Prayer prayer = getCurrentPhase().getAttributes().getPrayer();
+            if(!Tabs.isOpen(Tab.PRAYER))
+            {
+                Tabs.open(Tab.PRAYER);
+            }
+            assert prayer != null;
+            if(!Prayers.isEnabled(prayer))
+            {
+                Prayers.toggle(prayer);
+            }
         }
+    }
+    private void switchGear() {
+        if (!Tabs.isOpen(Tab.INVENTORY))
+        {
+            Tabs.open(Tab.INVENTORY);
+        }
+        if (gearState == ZulrahType.MAGIC)
+        {
+            ZulrahType.MAGIC.getSetup().switchGear(30);
+        }
+        else
+        {
+            ZulrahType.RANGE.getSetup().switchGear(30);
+        }
+        shouldChangeGear = false;
+    }
+    private void execBlocking(Runnable r)
+    {
+        if(isBlocking)
+        {
+            blockingTask.thenRunAsync(()-> {
+                isBlocking = true;
+                r.run();
+                isBlocking = false;
+                },executor);
+            return;
+        }
+
+        isBlocking = true;
+        CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+            r.run();
+            isBlocking = false;
+        }, executor);
+        blockingTask = future;
+        // Non-blocking way to handle task completion
+        future.thenAccept((result) -> {
+            System.out.println("Task completed. Shared variable is now: " + isBlocking);
+        });
+
+        // Do other things without blocking
+        System.out.println("Main thread is not blocked.");
     }
 
     private void setDest()
     {
         System.out.println("Setting tile to walk");
         this.dest = this.nextDest;
-        this.movementTicks = getCurrentPhase().getAttributes().getTicksToMove();
+        this.movementTicks = getCurrentPhase().getAttributes().getTicksToMove()-1;
     }
 
     private void setNextDest()
@@ -463,7 +637,7 @@ public class OzoneZulrahPlugin extends Plugin {
         @Override
         public void hotkeyPressed()
         {
-            switchGear();
+            //switchGear();
             System.out.println("Hotkeypressed");
         }
     };

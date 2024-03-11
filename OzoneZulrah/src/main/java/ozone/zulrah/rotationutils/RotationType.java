@@ -37,7 +37,7 @@ public enum RotationType
 			add(ZulrahType.RANGE, ZulrahLocation.WEST, StandLocation.WEST_PILLAR_N, (StandLocation) null, (Prayer) null, 28,7,0),
 			add(ZulrahType.MAGIC, ZulrahLocation.SOUTH, StandLocation.WEST_PILLAR_N, StandLocation.WEST_PILLAR_N2, Prayer.PROTECT_FROM_MAGIC, 39,11,0), //special case for blowpipe where to stand
 			add(ZulrahType.MELEE, ZulrahLocation.NORTH, StandLocation.WEST_PILLAR_N, (StandLocation) null, (Prayer) null, 21,2,3),
-			add(ZulrahType.RANGE, ZulrahLocation.EAST, StandLocation.CENTER, StandLocation.WEST_PILLAR_S, Prayer.PROTECT_FROM_MISSILES, 20,5,4),
+			add(ZulrahType.RANGE, ZulrahLocation.EAST, StandLocation.CENTER, StandLocation.WEST_PILLAR_S, Prayer.PROTECT_FROM_MISSILES, 20,5,2),
 			add(ZulrahType.MAGIC, ZulrahLocation.SOUTH, StandLocation.WEST_PILLAR_S, StandLocation.WEST_PILLAR_N2, Prayer.PROTECT_FROM_MAGIC, 36,10,0),
 			addJad(ZulrahType.RANGE, ZulrahLocation.WEST, StandLocation.WEST_PILLAR_S, StandLocation.EAST_PILLAR_S, Prayer.PROTECT_FROM_MISSILES, 48,10,0),
 			add(ZulrahType.MELEE, ZulrahLocation.NORTH, StandLocation.NORTHEAST_TOP, (StandLocation) null, (Prayer) null, 21,2,0))),
