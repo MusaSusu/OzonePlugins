@@ -52,7 +52,6 @@ public class OzoneZulrahPlugin extends Plugin {
 
     @Inject
     private Client client;
-
     @Inject
     private OzoneZulrahConfig config;
     @Inject
@@ -86,7 +85,7 @@ public class OzoneZulrahPlugin extends Plugin {
     private static volatile boolean isBlocking = false;
     private static CompletableFuture<?> blockingTask;
     private ZulrahType gearState;
-
+    private Prayer zulrahPrayer;
     private final BiConsumer<RotationType, RotationType> phaseTicksHandler = (current, potential) -> {
         if (zulrahReset)
         {
@@ -115,7 +114,6 @@ public class OzoneZulrahPlugin extends Plugin {
                 .collect(Collectors.toList());
         List<String> mageGearNames = Arrays.stream(config.mageGearNames().split(","))
                 .collect(Collectors.toList());
-
         ZulrahType.setMagePhaseGear(new GearSetup(rangeGearNames));
         ZulrahType.setRangedMeleePhaseGear(new GearSetup(mageGearNames));
         executor = Executors.newSingleThreadExecutor();
@@ -223,6 +221,7 @@ public class OzoneZulrahPlugin extends Plugin {
                 flipStandLocation = false;
                 flipPhasePrayer = false;
                 zulrahReset = true;
+                zulrahPrayer = null;
                 System.out.println("Resetting Zulrah");
                 break;
             }
@@ -235,10 +234,14 @@ public class OzoneZulrahPlugin extends Plugin {
                 if(attacksLeft == 0)
                 {
                     setDest();
+                    checkShouldAttack();
                 }
                 if (currentRotation == null || !getCurrentPhase().getZulrahNpc().isJad()) break;
+                if (zulrahPrayer == null)
+                {
+                    zulrahPrayer = getCurrentPhase().getAttributes().getPrayer();
+                }
                 execBlocking(this::changeJadPrays);
-                flipPhasePrayer = !flipPhasePrayer;
                 break;
             }
             case 5806:
@@ -251,14 +254,7 @@ public class OzoneZulrahPlugin extends Plugin {
                 attacksLeft--;
                 attackTicks = 8;
                 flipStandLocation = !flipStandLocation;
-                if(currentRotation == null)
-                {
-                    getCurrentPhase().getAttributes().getCurrentDynamicStandLocation().ifPresent(x-> dest = x.toLocalPoint());
-                }
-                else
-                {
-                    getCurrentPhase().getAttributes().getCurrentDynamicStandLocation().ifPresent(x-> dest = x.toLocalPoint());
-                }
+                getCurrentPhase().getAttributes().getCurrentDynamicStandLocation().ifPresent(x-> dest = x.toLocalPoint());
                 break;
             }
             case 5808:
@@ -309,6 +305,10 @@ public class OzoneZulrahPlugin extends Plugin {
             }
         }
         if (shouldChangeGear) {
+            if(dest != null && !Players.getLocal().isMoving()) //check for this so we only change gear while moving to save ticks.
+            {
+                return;
+            }
             execBlocking(this::switchGear);
             return;
         }
@@ -383,6 +383,7 @@ public class OzoneZulrahPlugin extends Plugin {
         flipStandLocation = false;
         flipPhasePrayer = false;
         zulrahReset = false;
+        zulrahPrayer = null;
         log.info("Zulrah Reset!");
     }
 
@@ -414,8 +415,13 @@ public class OzoneZulrahPlugin extends Plugin {
             if (food1 != null & food2 != null )
             {
                 execBlocking(()-> {
+                    if(!Tabs.isOpen(Tab.INVENTORY))
+                    {
+                        Tabs.open(Tab.INVENTORY);
+                        Time.sleep(5,20);
+                    }
                     food1.interact("Eat");
-                    Time.sleep(20);
+                    Time.sleep(20,30);
                     food2.interact("Eat");
                 });
                 return true;
@@ -522,7 +528,7 @@ public class OzoneZulrahPlugin extends Plugin {
     {
         if (flipPhasePrayer)
         {
-            Prayer prayer = getCurrentPhase().getAttributes().getPrayer();
+            Prayer prayer = zulrahPrayer;
             if(!Tabs.isOpen(Tab.PRAYER))
             {
                 Tabs.open(Tab.PRAYER);
@@ -544,7 +550,7 @@ public class OzoneZulrahPlugin extends Plugin {
         }
         else
         {
-            Prayer prayer = getCurrentPhase().getAttributes().getPrayer();
+            Prayer prayer = zulrahPrayer;
             if(!Tabs.isOpen(Tab.PRAYER))
             {
                 Tabs.open(Tab.PRAYER);
@@ -555,6 +561,7 @@ public class OzoneZulrahPlugin extends Plugin {
                 Prayers.toggle(prayer);
             }
         }
+        flipPhasePrayer = !flipPhasePrayer;
     }
     private void switchGear() {
         if (!Tabs.isOpen(Tab.INVENTORY))
@@ -602,7 +609,7 @@ public class OzoneZulrahPlugin extends Plugin {
     {
         System.out.println("Setting tile to walk");
         this.dest = this.nextDest;
-        this.movementTicks = getCurrentPhase().getAttributes().getTicksToMove()-1;
+        this.movementTicks = getCurrentPhase().getAttributes().getTicksToMove();
     }
 
     private void setNextDest()
@@ -617,6 +624,19 @@ public class OzoneZulrahPlugin extends Plugin {
             p = getNextPhase(potentialRotations.get(0));
         }
         nextDest = p.getAttributes().getStandLocation().toLocalPoint();
+    }
+    private void checkShouldAttack()
+    {
+        ZulrahPhase p;
+        if (currentRotation != null)
+        {
+            p = getNextPhase(currentRotation);
+        }
+        else
+        {
+            p = getNextPhase(potentialRotations.get(0));
+        }
+        shouldAttack = p.getAttributes().isShouldAttack();
     }
 
     private void setAttacksLeft()

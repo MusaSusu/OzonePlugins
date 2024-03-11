@@ -3,6 +3,7 @@ package ozone.zulrah.rotationutils;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import net.runelite.api.Prayer;
+import org.jetbrains.annotations.NotNull;
 import ozone.zulrah.data.StandLocation;
 import ozone.zulrah.OzoneZulrahPlugin;
 
@@ -26,7 +27,8 @@ public final class ZulrahAttributes
 	private final int phaseAttacks;
 	@Getter
 	private final int ticksToMove;
-
+	@Getter
+	private final boolean shouldAttack;
 
 	public Optional<StandLocation> getCurrentDynamicStandLocation() {
 		switch (getStandLocation()) {

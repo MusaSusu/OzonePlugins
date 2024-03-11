@@ -37,14 +37,14 @@ public enum RotationType
 			add(ZulrahType.RANGE, ZulrahLocation.WEST, StandLocation.WEST_PILLAR_N, (StandLocation) null, (Prayer) null, 28,7,0),
 			add(ZulrahType.MAGIC, ZulrahLocation.SOUTH, StandLocation.WEST_PILLAR_N, StandLocation.WEST_PILLAR_N2, Prayer.PROTECT_FROM_MAGIC, 39,11,0), //special case for blowpipe where to stand
 			add(ZulrahType.MELEE, ZulrahLocation.NORTH, StandLocation.WEST_PILLAR_N, (StandLocation) null, (Prayer) null, 21,2,3),
-			add(ZulrahType.RANGE, ZulrahLocation.EAST, StandLocation.CENTER, StandLocation.WEST_PILLAR_S, Prayer.PROTECT_FROM_MISSILES, 20,5,2),
+			add(ZulrahType.RANGE, ZulrahLocation.EAST, StandLocation.CENTER, StandLocation.WEST_PILLAR_S, Prayer.PROTECT_FROM_MISSILES, 20,5,2), //counts an attack as turning to face?
 			add(ZulrahType.MAGIC, ZulrahLocation.SOUTH, StandLocation.WEST_PILLAR_S, StandLocation.WEST_PILLAR_N2, Prayer.PROTECT_FROM_MAGIC, 36,10,0),
 			addJad(ZulrahType.RANGE, ZulrahLocation.WEST, StandLocation.WEST_PILLAR_S, StandLocation.EAST_PILLAR_S, Prayer.PROTECT_FROM_MISSILES, 48,10,0),
 			add(ZulrahType.MELEE, ZulrahLocation.NORTH, StandLocation.NORTHEAST_TOP, (StandLocation) null, (Prayer) null, 21,2,0))),
 	ROT_C("Rotation C", ImmutableList.of(
 			add(ZulrahType.RANGE, ZulrahLocation.NORTH, StandLocation.NORTHEAST_TOP, (StandLocation) null, (Prayer) null, 28,9,0),
 			add(ZulrahType.RANGE, ZulrahLocation.EAST, StandLocation.NORTHEAST_TOP, (StandLocation) null, Prayer.PROTECT_FROM_MISSILES, 30,8,4),
-			add(ZulrahType.MELEE, ZulrahLocation.NORTH, StandLocation.WEST, (StandLocation) null, (Prayer) null, 40,8,0),
+			add(ZulrahType.MELEE, ZulrahLocation.NORTH, StandLocation.WEST, (StandLocation) null, (Prayer) null, 40,8,0,true),
 			add(ZulrahType.MAGIC, ZulrahLocation.WEST, StandLocation.WEST, StandLocation.EAST_PILLAR_S, Prayer.PROTECT_FROM_MAGIC, 20,5,4),
 			add(ZulrahType.RANGE, ZulrahLocation.SOUTH, StandLocation.EAST_PILLAR_S, StandLocation.EAST_PILLAR_N2, Prayer.PROTECT_FROM_MISSILES, 20,5,4),
 			add(ZulrahType.MAGIC, ZulrahLocation.EAST, StandLocation.EAST_PILLAR_S, StandLocation.WEST_PILLAR_S, Prayer.PROTECT_FROM_MAGIC, 20,5,4),
@@ -60,7 +60,7 @@ public enum RotationType
 			add(ZulrahType.MAGIC, ZulrahLocation.WEST, StandLocation.WEST_PILLAR_N, (StandLocation) null, Prayer.PROTECT_FROM_MAGIC, 30,8,2),
 			add(ZulrahType.MELEE, ZulrahLocation.NORTH, StandLocation.EAST_PILLAR_N, (StandLocation) null, (Prayer) null, 28,4,4),
 			add(ZulrahType.RANGE, ZulrahLocation.EAST, StandLocation.EAST_PILLAR, (StandLocation) null, Prayer.PROTECT_FROM_MISSILES, 17,4,0),
-			add(ZulrahType.RANGE, ZulrahLocation.SOUTH, StandLocation.EAST_PILLAR, (StandLocation) null, (Prayer) null, 34,5,0),
+			add(ZulrahType.RANGE, ZulrahLocation.SOUTH, StandLocation.EAST_PILLAR, (StandLocation) null, (Prayer) null, 34,5,0,true),
 			add(ZulrahType.MAGIC, ZulrahLocation.WEST, StandLocation.WEST_PILLAR_S, (StandLocation) null, Prayer.PROTECT_FROM_MAGIC, 33,9,4),
 			add(ZulrahType.RANGE, ZulrahLocation.NORTH, StandLocation.EAST_PILLAR_N, StandLocation.EAST_PILLAR_S, Prayer.PROTECT_FROM_MISSILES, 20,5,0),
 			add(ZulrahType.MAGIC, ZulrahLocation.NORTH, StandLocation.EAST_PILLAR_N, StandLocation.EAST_PILLAR_S, Prayer.PROTECT_FROM_MAGIC, 27,7,0),
@@ -84,12 +84,16 @@ public enum RotationType
 
 	private static ZulrahPhase add(ZulrahType type, ZulrahLocation zulrahLocation, StandLocation standLocation, StandLocation stallLocation, Prayer prayer, int phaseTicks,int phaseAttacks,int ticksToMove)
 	{
-		return new ZulrahPhase(new ZulrahNpc(type, zulrahLocation, false), new ZulrahAttributes(standLocation, stallLocation, prayer, phaseTicks,phaseAttacks,ticksToMove));
+		return new ZulrahPhase(new ZulrahNpc(type, zulrahLocation, false), new ZulrahAttributes(standLocation, stallLocation, prayer, phaseTicks,phaseAttacks,ticksToMove,false));
+	}
+	private static ZulrahPhase add(ZulrahType type, ZulrahLocation zulrahLocation, StandLocation standLocation, StandLocation stallLocation, Prayer prayer, int phaseTicks,int phaseAttacks,int ticksToMove,boolean shouldAttack)
+	{
+		return new ZulrahPhase(new ZulrahNpc(type, zulrahLocation, false), new ZulrahAttributes(standLocation, stallLocation, prayer, phaseTicks,phaseAttacks,ticksToMove,true));
 	}
 
 	private static ZulrahPhase addJad(ZulrahType type, ZulrahLocation zulrahLocation, StandLocation standLocation, StandLocation stallLocation, Prayer prayer, int phaseTicks,int phaseAttacks,int ticksToMove)
 	{
-		return new ZulrahPhase(new ZulrahNpc(type, zulrahLocation, true), new ZulrahAttributes(standLocation, stallLocation, prayer, phaseTicks,phaseAttacks,ticksToMove));
+		return new ZulrahPhase(new ZulrahNpc(type, zulrahLocation, true), new ZulrahAttributes(standLocation, stallLocation, prayer, phaseTicks,phaseAttacks,ticksToMove,false));
 	}
 
 	public String getRotationName()
