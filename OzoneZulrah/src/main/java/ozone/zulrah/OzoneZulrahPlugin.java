@@ -19,6 +19,7 @@ import net.runelite.client.util.HotkeyListener;
 import net.unethicalite.api.commons.Time;
 import net.unethicalite.api.entities.Players;
 import net.unethicalite.api.game.Combat;
+import net.unethicalite.api.game.Skills;
 import net.unethicalite.api.items.Inventory;
 import net.unethicalite.api.movement.Movement;
 import net.unethicalite.api.widgets.Prayers;
@@ -160,10 +161,12 @@ public class OzoneZulrahPlugin extends Plugin {
                 potentialRotations = RotationType.findPotentialRotations(npc, stage);
                 phaseTicksHandler.accept(currentRotation, potentialRotations.get(0));
                 log.info("New Zulrah Encounter Started");
+
                 dest = StandLocation.NORTHEAST_TOP.toLocalPoint();
                 this.attacksLeft = 9;
                 shouldAttack = true;
                 execBlocking(this::changePrays);
+                execBlocking(this::prePray);
                 break;
             }
             case 5073:
@@ -186,9 +189,19 @@ public class OzoneZulrahPlugin extends Plugin {
                 }
 
                 setAttacksLeft();
-                setNextDest();
                 shouldAttack = true;
                 execBlocking(this::changePrays);
+                if(isLastPhase(currentRotation))
+                {
+                    System.out.println("last phase should attack bool: " + shouldAttack );
+                }
+
+                if(currentRotation != null)
+                {
+                    if (isLastPhase(currentRotation)) break;
+                }
+                setNextDest();
+
                 break;
             }
             case 5072:
@@ -214,7 +227,7 @@ public class OzoneZulrahPlugin extends Plugin {
                 }
 
                 if (currentRotation == null || !isLastPhase(currentRotation)) break;
-                stage = -1;
+                stage = 0;
                 currentRotation = null;
                 potentialRotations.clear();
                 snakelings.clear();
@@ -237,10 +250,15 @@ public class OzoneZulrahPlugin extends Plugin {
                     checkShouldAttack();
                 }
                 if (currentRotation == null || !getCurrentPhase().getZulrahNpc().isJad()) break;
+                if(attacksLeft < 0)
+                {
+                    break;
+                }
                 if (zulrahPrayer == null)
                 {
                     zulrahPrayer = getCurrentPhase().getAttributes().getPrayer();
                 }
+                flipPhasePrayer = !flipPhasePrayer;
                 execBlocking(this::changeJadPrays);
                 break;
             }
@@ -561,7 +579,6 @@ public class OzoneZulrahPlugin extends Plugin {
                 Prayers.toggle(prayer);
             }
         }
-        flipPhasePrayer = !flipPhasePrayer;
     }
     private void switchGear() {
         if (!Tabs.isOpen(Tab.INVENTORY))
@@ -570,11 +587,12 @@ public class OzoneZulrahPlugin extends Plugin {
         }
         if (gearState == ZulrahType.MAGIC)
         {
-            ZulrahType.MAGIC.getSetup().switchGear(30);
+            ZulrahType.MAGIC.getSetup().switchGear(15);
+            rangePot();
         }
         else
         {
-            ZulrahType.RANGE.getSetup().switchGear(30);
+            ZulrahType.RANGE.getSetup().switchGear(15);
         }
         shouldChangeGear = false;
     }
@@ -628,14 +646,7 @@ public class OzoneZulrahPlugin extends Plugin {
     private void checkShouldAttack()
     {
         ZulrahPhase p;
-        if (currentRotation != null)
-        {
-            p = getNextPhase(currentRotation);
-        }
-        else
-        {
-            p = getNextPhase(potentialRotations.get(0));
-        }
+        p = getCurrentPhase();
         shouldAttack = p.getAttributes().isShouldAttack();
     }
 
@@ -652,6 +663,36 @@ public class OzoneZulrahPlugin extends Plugin {
             attacksLeft = p.getAttributes().getPhaseAttacks();
         }
     }
+
+    private void rangePot()
+    {
+        if(Skills.getBoostedLevel(Skill.RANGED) - Skills.getLevel(Skill.RANGED) >= 5)
+        {
+            return;
+        }
+        Item rangePot = Inventory.getFirst(x-> x.getName().contains("Ranging potion"));
+        if (rangePot != null)
+        {
+            execBlocking( () -> {
+                rangePot.interact("Drink");
+                    }
+            );
+        }
+    }
+
+    private void prePray()
+    {
+        Prayer prayer = Prayer.PRESERVE;
+        if(!Tabs.isOpen(Tab.PRAYER))
+        {
+            Tabs.open(Tab.PRAYER);
+        }
+        if(!Prayers.isEnabled(prayer))
+        {
+            Prayers.toggle(prayer);
+        }
+    }
+
     private final HotkeyListener gearSwitcher = new HotkeyListener(() -> config.getSpecHotkey())
     {
         @Override

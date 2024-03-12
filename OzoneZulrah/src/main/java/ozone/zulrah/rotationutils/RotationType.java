@@ -24,10 +24,10 @@ public enum RotationType
 			add(ZulrahType.MELEE, ZulrahLocation.NORTH, StandLocation.NORTHEAST_TOP, (StandLocation) null, (Prayer) null, 21,2,3),
 			add(ZulrahType.MAGIC, ZulrahLocation.NORTH, StandLocation.EAST_PILLAR_N, StandLocation.EAST_PILLAR_S, Prayer.PROTECT_FROM_MAGIC, 18,4,4),
 			add(ZulrahType.RANGE, ZulrahLocation.SOUTH, StandLocation.WEST_PILLAR_N, StandLocation.WEST_PILLAR_N2, Prayer.PROTECT_FROM_MISSILES, 39,11,0),
-			add(ZulrahType.MELEE, ZulrahLocation.NORTH, StandLocation.WEST_PILLAR_N, (StandLocation) null, (Prayer) null, 22,2,3),
-			add(ZulrahType.MAGIC, ZulrahLocation.WEST, StandLocation.WEST_PILLAR_S, StandLocation.EAST_PILLAR_S, Prayer.PROTECT_FROM_MAGIC, 20,5,4),
+			add(ZulrahType.MELEE, ZulrahLocation.NORTH, StandLocation.WEST_PILLAR_N, (StandLocation) null, (Prayer) null, 22,2,2),
+			add(ZulrahType.MAGIC, ZulrahLocation.WEST, StandLocation.WEST_PILLAR_N, StandLocation.EAST_PILLAR_S, Prayer.PROTECT_FROM_MAGIC, 20,5,4),
 			add(ZulrahType.RANGE, ZulrahLocation.SOUTH, StandLocation.EAST_PILLAR, (StandLocation) null, (Prayer) null, 28,7,0),
-			add(ZulrahType.MAGIC, ZulrahLocation.SOUTH, StandLocation.EAST_PILLAR, StandLocation.EAST_PILLAR_N2, Prayer.PROTECT_FROM_MAGIC, 36,4,0),
+			add(ZulrahType.MAGIC, ZulrahLocation.SOUTH, StandLocation.EAST_PILLAR, StandLocation.EAST_PILLAR_N2, Prayer.PROTECT_FROM_MAGIC, 36,4,0,true),
 			addJad(ZulrahType.RANGE, ZulrahLocation.WEST, StandLocation.WEST_PILLAR_S, StandLocation.EAST_PILLAR_S, Prayer.PROTECT_FROM_MISSILES, 48,10,0),
 			add(ZulrahType.MELEE, ZulrahLocation.NORTH, StandLocation.NORTHEAST_TOP, (StandLocation) null, (Prayer) null, 21,2,0))),
 	ROT_B("Rotation B", ImmutableList.of(
@@ -44,7 +44,7 @@ public enum RotationType
 	ROT_C("Rotation C", ImmutableList.of(
 			add(ZulrahType.RANGE, ZulrahLocation.NORTH, StandLocation.NORTHEAST_TOP, (StandLocation) null, (Prayer) null, 28,9,0),
 			add(ZulrahType.RANGE, ZulrahLocation.EAST, StandLocation.NORTHEAST_TOP, (StandLocation) null, Prayer.PROTECT_FROM_MISSILES, 30,8,4),
-			add(ZulrahType.MELEE, ZulrahLocation.NORTH, StandLocation.WEST, (StandLocation) null, (Prayer) null, 40,8,0,true),
+			add(ZulrahType.MELEE, ZulrahLocation.NORTH, StandLocation.WEST, (StandLocation) null, (Prayer) null, 40,8,0),
 			add(ZulrahType.MAGIC, ZulrahLocation.WEST, StandLocation.WEST, StandLocation.EAST_PILLAR_S, Prayer.PROTECT_FROM_MAGIC, 20,5,4),
 			add(ZulrahType.RANGE, ZulrahLocation.SOUTH, StandLocation.EAST_PILLAR_S, StandLocation.EAST_PILLAR_N2, Prayer.PROTECT_FROM_MISSILES, 20,5,4),
 			add(ZulrahType.MAGIC, ZulrahLocation.EAST, StandLocation.EAST_PILLAR_S, StandLocation.WEST_PILLAR_S, Prayer.PROTECT_FROM_MAGIC, 20,5,4),
