@@ -98,7 +98,7 @@ public final class GearSetup
 					|| x.toLowerCase().contains("wield")
 					|| x.toLowerCase().contains("equip")));
 
-			Time.sleep(10,delay);
+			Time.sleep(5,delay);
 		}
 
 		return 50;
