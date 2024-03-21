@@ -12,6 +12,8 @@ import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.events.NpcLootReceived;
+import net.runelite.client.game.ItemStack;
 import net.runelite.client.input.KeyManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
@@ -74,7 +76,6 @@ public class OzoneZulrahPlugin extends Plugin {
     private static boolean flipStandLocation = false;
     @Getter
     private static boolean flipPhasePrayer = false;
-
     @Getter
     private static boolean zulrahReset = false;
     private final Collection<NPC> snakelings = new ArrayList<NPC>();
@@ -83,12 +84,14 @@ public class OzoneZulrahPlugin extends Plugin {
     private boolean shouldAttack;
     private boolean shouldPray;
     private boolean shouldChangeGear;
+    private boolean shouldPickItemsUp;
     private int attacksLeft = 0;
     private LocalPoint dest;
     private LocalPoint nextDest;
     private static volatile boolean isBlocking = false;
     private static CompletableFuture<?> blockingTask;
     private ZulrahPhase refZulrah;
+    private Collection<ItemStack> loot;
 
     private final BiConsumer<RotationType, RotationType> phaseTicksHandler = (current, potential) -> {
         if (zulrahReset)
@@ -151,8 +154,6 @@ public class OzoneZulrahPlugin extends Plugin {
         {
             return;
         }
-        // 5808 = facing?
-        //
         System.out.println(npc.getAnimation());
         switch (npc.getAnimation())
         {
@@ -176,7 +177,16 @@ public class OzoneZulrahPlugin extends Plugin {
             {
                 System.out.println("Zulrah coming up");
                 //zulrah coming up
-                ++stage;
+                if (zulrahReset)
+                {
+                    zulrahReset = false;
+                    zulrahNpc = npc;
+                }
+                else
+                {
+                    ++stage;
+                }
+
                 if (currentRotation == null)
                 {
                     potentialRotations = RotationType.findPotentialRotations(npc, stage);
@@ -194,10 +204,6 @@ public class OzoneZulrahPlugin extends Plugin {
 
                 setAttacksLeft();
                 shouldAttack = true;
-                if(isLastPhase(currentRotation))
-                {
-                    System.out.println("last phase should attack bool: " + shouldAttack );
-                }
 
                 if(currentRotation != null)
                 {
@@ -220,10 +226,6 @@ public class OzoneZulrahPlugin extends Plugin {
                 if(getCurrentPhase().getZulrahNpc().getType() == ZulrahType.MELEE)
                 {
                     setDest();
-                }
-                if (zulrahReset)
-                {
-                    zulrahReset = false;
                 }
 
                 if(stage > 0)
@@ -290,6 +292,11 @@ public class OzoneZulrahPlugin extends Plugin {
 
     @Subscribe
     private void onGameTick(GameTick event) {
+        if (shouldPickItemsUp && loot != null)
+        {
+            pickItemsUp();
+            return;
+        }
         if (client.getGameState() != GameState.LOGGED_IN || zulrahNpc == null) {
             return;
         }
@@ -391,7 +398,7 @@ public class OzoneZulrahPlugin extends Plugin {
         {
             zulrahDataSet.add(new ZulrahData(getCurrentPhase(), getNextPhase(currentRotation)));
         }
-        return zulrahDataSet.size() > 0 ? zulrahDataSet : Collections.emptySet();
+        return !zulrahDataSet.isEmpty() ? zulrahDataSet : Collections.emptySet();
     }
 
     private void reset()
@@ -505,7 +512,7 @@ public class OzoneZulrahPlugin extends Plugin {
         if(!Players.getLocal().isInteracting())
         {
             zulrahNpc.interact("Attack");
-            attackTicks = 4;
+            attackTicks = 5;
             movementTicks = 1;
         }
     }
@@ -596,7 +603,7 @@ public class OzoneZulrahPlugin extends Plugin {
         {
             Tabs.open(Tab.INVENTORY);
         }
-        if (refZulrah.getZulrahNpc().getType() == ZulrahType.MAGIC)
+        if (refZulrah.getZulrahNpc().getType() == ZulrahType.MAGIC && !refZulrah.getZulrahNpc().isJad())
         {
             ZulrahType.MAGIC.getSetup().switchGear(10);
             rangePot();
@@ -620,12 +627,11 @@ public class OzoneZulrahPlugin extends Plugin {
         }
 
         isBlocking = true;
-        CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+
+        blockingTask = CompletableFuture.runAsync(() -> {
             r.run();
             isBlocking = false;
         }, executor);
-
-        blockingTask = future;
     }
 
     private void setDest()
@@ -642,9 +648,7 @@ public class OzoneZulrahPlugin extends Plugin {
     }
     private void checkShouldAttack()
     {
-        ZulrahPhase p;
-        p = getCurrentPhase();
-        shouldAttack = p.getAttributes().isShouldAttack();
+        shouldAttack = getCurrentPhase().getAttributes().isShouldAttack();
     }
 
     private void setAttacksLeft()
@@ -658,7 +662,29 @@ public class OzoneZulrahPlugin extends Plugin {
             ZulrahPhase p = getCurrentPhase();
             Preconditions.checkNotNull(p, "Attempted to set phase ticks but current Zulrah phase was somehow null. Stage: " + stage);
             attacksLeft = p.getAttributes().getPhaseAttacks();
+            if(currentRotation != null)
+            {
+                System.out.println("rotation = B check" + currentRotation.getRotationName().equals("Rotation B"));
+                System.out.println("equipment check" + p.getZulrahNpc().getType().getSetup().hasExactItem("Toxic blowpipe"));
+            }
+            if (stage == 4 && currentRotation.getRotationName().equals("Rotation B") && p.getZulrahNpc().getType().getSetup().hasExactItem("Toxic blowpipe"))
+            {
+                System.out.println("rotation B change attacks left");
+                attacksLeft = 5;
+            }
         }
+    }
+
+    private void pickItemsUp()
+    {
+        executor.execute(()-> {
+            LocalPoint itemLoc = loot.iterator().next().getLocation();
+            Point canvas = Perspective.localToCanvas(client,itemLoc,0);
+            naturalMouse.moveTo(canvas.getX(), canvas.getY());
+            loot = null;
+            shouldPickItemsUp = false;
+                }
+        );
     }
 
     private void rangePot()
@@ -690,13 +716,22 @@ public class OzoneZulrahPlugin extends Plugin {
         }
     }
 
+    @Subscribe
+    public void onNpcLootReceived(NpcLootReceived npcLootReceived)
+    {
+        if (npcLootReceived.getNpc().getName().equals("Zulrah"))
+        {
+            shouldPickItemsUp = true;
+            loot = npcLootReceived.getItems();
+        }
+    }
+
     private final HotkeyListener gearSwitcher = new HotkeyListener(() -> config.getSpecHotkey())
     {
         @Override
         public void hotkeyPressed()
         {
             //switchGear();
-            System.out.println("Hotkeypressed");
         }
     };
 
