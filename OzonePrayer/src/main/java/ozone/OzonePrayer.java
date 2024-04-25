@@ -3,16 +3,13 @@ package ozone;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.Item;
-import net.runelite.api.ItemID;
 import net.runelite.api.MenuAction;
 import net.runelite.api.events.MenuEntryAdded;
 import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
-import net.unethicalite.api.game.Game;
 import net.unethicalite.api.items.Inventory;
-import net.unethicalite.api.items.Items;
 import org.pf4j.Extension;
 
 import javax.inject.Inject;
@@ -50,11 +47,6 @@ public class OzonePrayer extends Plugin {
             client.setSelectedSpellItemId(item.getId());
             this.tick = true;
         }
-
-        System.out.println(event.toString());
-        System.out.println(client.getSelectedSpellWidget());
-        System.out.println(client.getSelectedSpellChildIndex());
-        System.out.println(client.getSelectedSpellItemId());
         return;
     }
 

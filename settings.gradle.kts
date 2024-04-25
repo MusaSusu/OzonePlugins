@@ -7,7 +7,11 @@ include(":PestControl")
 include("OzoneAutoSpec")
 include("OzoneTempoross")
 include("OzonePrayer")
-
+include("unethical-zulrah")
+include("OzoneZulrah")
+include("KyleeZulrah")
+include("OzoneTesting")
+include("OzoneUtils")
 
 for (project in rootProject.children) {
     project.apply {
