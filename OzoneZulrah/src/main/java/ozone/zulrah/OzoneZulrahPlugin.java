@@ -10,6 +10,8 @@ import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.AnimationChanged;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
+import net.runelite.api.widgets.Widget;
+import net.runelite.api.widgets.WidgetInfo;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.NpcLootReceived;
@@ -24,6 +26,7 @@ import net.unethicalite.api.game.Combat;
 import net.unethicalite.api.game.Skills;
 import net.unethicalite.api.input.naturalmouse.NaturalMouse;
 import net.unethicalite.api.items.Inventory;
+import net.unethicalite.api.movement.CameraController;
 import net.unethicalite.api.movement.Movement;
 import net.unethicalite.api.widgets.Prayers;
 import net.unethicalite.api.widgets.Tab;
@@ -38,6 +41,7 @@ import ozone.zulrah.rotationutils.ZulrahPhase;
 
 import javax.annotation.Nullable;
 import javax.inject.Inject;
+import java.awt.Rectangle;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -60,6 +64,8 @@ public class OzoneZulrahPlugin extends Plugin {
     private Client client;
     @Inject
     private OzoneZulrahConfig config;
+    @Inject
+    private CameraController cameraController;
     @Inject
     private KeyManager keyManager;
     private ExecutorService executor;
@@ -92,6 +98,7 @@ public class OzoneZulrahPlugin extends Plugin {
     private static CompletableFuture<?> blockingTask;
     private ZulrahPhase refZulrah;
     private Collection<ItemStack> loot;
+    private Rectangle bounds;
 
     private final BiConsumer<RotationType, RotationType> phaseTicksHandler = (current, potential) -> {
         if (zulrahReset)
@@ -319,7 +326,8 @@ public class OzoneZulrahPlugin extends Plugin {
         {
             playerAttackTicks--;
         }
-        if (isBlocking) {
+        if (isBlocking)
+        {
             return;
         }
         if (dest != null) {
@@ -459,7 +467,7 @@ public class OzoneZulrahPlugin extends Plugin {
             }
             else if (food1 != null)
             {
-                food1.interact("Eat");
+                execBlocking( ()-> food1.interact("Eat"));
                 return true;
             }
             else
@@ -478,7 +486,7 @@ public class OzoneZulrahPlugin extends Plugin {
             Item pot = Inventory.getFirst(x-> x.getName().contains("Prayer potion"));
             if (pot != null)
             {
-                pot.interact("Drink");
+                execBlocking(()->pot.interact("Drink"));
                 return true;
             }
             else
@@ -497,7 +505,7 @@ public class OzoneZulrahPlugin extends Plugin {
             Item pot = Inventory.getFirst(x-> x.getName().contains("Anti-venom"));
             if(pot != null)
             {
-                pot.interact("Drink");
+                execBlocking(()->pot.interact("Drink"));
                 return true;
             }
             else {
@@ -509,9 +517,13 @@ public class OzoneZulrahPlugin extends Plugin {
     }
     private void attackZulrah()
     {
+        if(shouldRotateCamera())
+        {
+            return;
+        }
         if(!Players.getLocal().isInteracting())
         {
-            zulrahNpc.interact("Attack");
+            execBlocking(()->zulrahNpc.interact("Attack"));
             attackTicks = 5;
             movementTicks = 1;
         }
@@ -525,12 +537,14 @@ public class OzoneZulrahPlugin extends Plugin {
         {
             if(!Movement.isWalking())
             {
-                Movement.walk(target);
+                execBlocking(()->Movement.walk(target));
                 movementTicks = 4;
             }
         }
-        else {
+        else
+        {
             dest = null;
+            shouldRotateCamera();
         }
     }
 
@@ -714,6 +728,49 @@ public class OzoneZulrahPlugin extends Plugin {
         {
             Prayers.toggle(prayer);
         }
+    }
+
+    private boolean rotateCamera()
+    {
+        if (this.bounds == null)
+        {
+            Widget viewPortWidget;
+            if (client.isResized())
+            {
+                viewPortWidget = client.getWidget(WidgetInfo.RESIZABLE_VIEWPORT_OLD_SCHOOL_BOX);
+            }
+            else
+            {
+                viewPortWidget = client.getWidget(WidgetInfo.FIXED_VIEWPORT);
+            }
+
+            this.bounds = viewPortWidget.getBounds();
+        }
+        return false;
+    }
+
+    private boolean shouldRotateCamera()
+    {
+        Widget viewPortWidget;
+        if (client.isResized()) {
+            viewPortWidget = client.getWidget(WidgetInfo.RESIZABLE_VIEWPORT_OLD_SCHOOL_BOX);
+        }
+        else
+        {
+            viewPortWidget = client.getWidget(WidgetInfo.FIXED_VIEWPORT);
+        }
+        this.bounds = new Rectangle(0,0,viewPortWidget.getWidth(), (int) (viewPortWidget.getHeight() * 0.75));
+
+        System.out.println(bounds);
+        System.out.println(Perspective.localToCanvas(client,zulrahNpc.getLocalLocation(),0).getAwtPoint());
+        System.out.println(this.bounds.contains(Perspective.localToCanvas(client, zulrahNpc.getLocalLocation(),0).getAwtPoint()));
+
+        if(!this.bounds.contains(Perspective.localToCanvas(client,zulrahNpc.getLocalLocation(),0).getAwtPoint()))
+        {
+            execBlocking(()->cameraController.alignToNorth(zulrahNpc.getLocalLocation()));
+            return true;
+        }
+        return false;
     }
 
     @Subscribe
