@@ -22,6 +22,7 @@ import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.util.HotkeyListener;
 import net.unethicalite.api.commons.Time;
 import net.unethicalite.api.entities.Players;
+import net.unethicalite.api.entities.TileItems;
 import net.unethicalite.api.game.Combat;
 import net.unethicalite.api.game.Skills;
 import net.unethicalite.api.input.naturalmouse.NaturalMouse;
@@ -97,7 +98,8 @@ public class OzoneZulrahPlugin extends Plugin {
     private static volatile boolean isBlocking = false;
     private static CompletableFuture<?> blockingTask;
     private ZulrahPhase refZulrah;
-    private Collection<ItemStack> loot;
+    private int[] loot;
+    private LocalPoint lootLoc;
     private Rectangle bounds;
 
     private final BiConsumer<RotationType, RotationType> phaseTicksHandler = (current, potential) -> {
@@ -552,7 +554,10 @@ public class OzoneZulrahPlugin extends Plugin {
     {
         Prayer prayer = refZulrah.getAttributes().getPrayer();
         Prayer damagePrayer = refZulrah.getZulrahNpc().getType() == ZulrahType.MAGIC ? config.rangePrayer().getPrayer() : config.magePrayer().getPrayer();
-
+        if (refZulrah.getZulrahNpc().isJad())
+        {
+            damagePrayer = config.magePrayer().getPrayer();
+        }
         if(prayer == null)
         {
         }
@@ -692,11 +697,18 @@ public class OzoneZulrahPlugin extends Plugin {
     private void pickItemsUp()
     {
         executor.execute(()-> {
-            LocalPoint itemLoc = loot.iterator().next().getLocation();
-            Point canvas = Perspective.localToCanvas(client,itemLoc,0);
-            naturalMouse.moveTo(canvas.getX(), canvas.getY());
-            loot = null;
-            shouldPickItemsUp = false;
+                    if (client.getLocalPlayer().isMoving()) {
+                        return;
+                    }
+                    if (!TileItems.getAll(loot).isEmpty()) {
+                        TileItems.getAll(loot)
+                                .stream()
+                                .findFirst()
+                                .ifPresent(x -> x.interact("Take"));
+                    } else {
+                        shouldPickItemsUp = false;
+                        loot = null;
+                    }
                 }
         );
     }
@@ -779,7 +791,13 @@ public class OzoneZulrahPlugin extends Plugin {
         if (npcLootReceived.getNpc().getName().equals("Zulrah"))
         {
             shouldPickItemsUp = true;
-            loot = npcLootReceived.getItems();
+            lootLoc = npcLootReceived.getItems().iterator().next().getLocation();
+            loot = npcLootReceived
+                    .getItems()
+                    .stream()
+                    .mapToInt(ItemStack::getId)
+                    .toArray();
+
         }
     }
 
