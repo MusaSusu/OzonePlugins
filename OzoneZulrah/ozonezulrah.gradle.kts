@@ -1,6 +1,9 @@
-
 project.extra["PluginName"] = "Ozone Zulrah"
 project.extra["PluginDescription"] = "Does zulrah for you"
+
+dependencies {
+    implementation(project(mapOf("path" to ":OzoneUtils")))
+}
 
 tasks {
     jar {

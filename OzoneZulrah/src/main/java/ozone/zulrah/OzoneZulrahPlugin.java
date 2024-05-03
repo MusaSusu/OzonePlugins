@@ -19,6 +19,7 @@ import net.runelite.client.game.ItemStack;
 import net.runelite.client.input.KeyManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.HotkeyListener;
 import net.unethicalite.api.commons.Time;
 import net.unethicalite.api.entities.Players;
@@ -36,6 +37,7 @@ import org.pf4j.Extension;
 import ozone.zulrah.data.GearSetup;
 import ozone.zulrah.data.StandLocation;
 import ozone.zulrah.data.ZulrahType;
+import ozone.zulrah.overlays.ZulrahOverlay;
 import ozone.zulrah.rotationutils.RotationType;
 import ozone.zulrah.rotationutils.ZulrahData;
 import ozone.zulrah.rotationutils.ZulrahPhase;
@@ -69,6 +71,10 @@ public class OzoneZulrahPlugin extends Plugin {
     private CameraController cameraController;
     @Inject
     private KeyManager keyManager;
+    @Inject
+    private OverlayManager overlayManager;
+    @Inject
+    private ZulrahOverlay zulrahOverlay;
     private ExecutorService executor;
     private NPC zulrahNpc = null;
     private int stage = 0;
@@ -130,9 +136,13 @@ public class OzoneZulrahPlugin extends Plugin {
                 .collect(Collectors.toList());
         List<String> mageGearNames = Arrays.stream(config.mageGearNames().split(","))
                 .collect(Collectors.toList());
+
         ZulrahType.setMagePhaseGear(new GearSetup(rangeGearNames));
         ZulrahType.setRangedMeleePhaseGear(new GearSetup(mageGearNames));
+
         executor = Executors.newSingleThreadExecutor();
+
+        overlayManager.add(zulrahOverlay);
 
 /*
         if (client.getGameState() == GameState.LOGGED_IN)
@@ -149,6 +159,7 @@ public class OzoneZulrahPlugin extends Plugin {
         reset();
         executor.shutdownNow();
         keyManager.unregisterKeyListener(gearSwitcher);
+        overlayManager.remove(zulrahOverlay);
     }
 
     @Subscribe
@@ -346,7 +357,8 @@ public class OzoneZulrahPlugin extends Plugin {
             execBlocking(this::changePrays);
             return;
         }
-        if (shouldChangeGear) {
+        if (shouldChangeGear)
+        {
             if(dest != null && !Players.getLocal().isMoving()) //check for this so we only change gear while moving to save ticks.
             {
                 return;
@@ -354,7 +366,8 @@ public class OzoneZulrahPlugin extends Plugin {
             execBlocking(this::switchGear);
             return;
         }
-        if (checkHealth()) {
+        if (checkHealth())
+        {
             return;
         }
         if(checkPrayer())
@@ -365,8 +378,10 @@ public class OzoneZulrahPlugin extends Plugin {
         {
             return;
         }
-        if (shouldAttack) {
-            if (playerAttackTicks > 0) {
+        if (shouldAttack)
+        {
+            if (playerAttackTicks > 0)
+            {
                 return;
             } else {
                 attackZulrah();
@@ -696,7 +711,7 @@ public class OzoneZulrahPlugin extends Plugin {
 
     private void pickItemsUp()
     {
-        executor.execute(()-> {
+        execBlocking(()-> {
                     if (client.getLocalPlayer().isMoving()) {
                         return;
                     }
@@ -764,7 +779,8 @@ public class OzoneZulrahPlugin extends Plugin {
     private boolean shouldRotateCamera()
     {
         Widget viewPortWidget;
-        if (client.isResized()) {
+        if (client.isResized())
+        {
             viewPortWidget = client.getWidget(WidgetInfo.RESIZABLE_VIEWPORT_OLD_SCHOOL_BOX);
         }
         else
