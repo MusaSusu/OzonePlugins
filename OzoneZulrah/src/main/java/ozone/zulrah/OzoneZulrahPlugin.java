@@ -41,6 +41,7 @@ import ozone.zulrah.overlays.ZulrahOverlay;
 import ozone.zulrah.rotationutils.RotationType;
 import ozone.zulrah.rotationutils.ZulrahData;
 import ozone.zulrah.rotationutils.ZulrahPhase;
+import ozone.zulrah.tasks.AttackZulrah;
 
 import javax.annotation.Nullable;
 import javax.inject.Inject;
@@ -75,6 +76,11 @@ public class OzoneZulrahPlugin extends Plugin {
     private OverlayManager overlayManager;
     @Inject
     private ZulrahOverlay zulrahOverlay;
+    @Inject
+    private OzoneTasksController ozoneTasksController;
+
+    @Inject
+    private NaturalMouse naturalmouse;
     private ExecutorService executor;
     private NPC zulrahNpc = null;
     private int stage = 0;
@@ -92,6 +98,7 @@ public class OzoneZulrahPlugin extends Plugin {
     @Getter
     private static boolean zulrahReset = false;
     private final Collection<NPC> snakelings = new ArrayList<NPC>();
+    private boolean flipEat = false;
     private int movementTicks = 0;
     private int playerAttackTicks = 0;
     private boolean shouldAttack;
@@ -107,6 +114,7 @@ public class OzoneZulrahPlugin extends Plugin {
     private int[] loot;
     private LocalPoint lootLoc;
     private Rectangle bounds;
+    private AttackZulrah attackZulrah;
 
     private final BiConsumer<RotationType, RotationType> phaseTicksHandler = (current, potential) -> {
         if (zulrahReset)
@@ -144,13 +152,13 @@ public class OzoneZulrahPlugin extends Plugin {
 
         overlayManager.add(zulrahOverlay);
 
-/*
+        this.attackZulrah = injector.getInstance(AttackZulrah.class);
+        /*
         if (client.getGameState() == GameState.LOGGED_IN)
         {
             keyManager.registerKeyListener(gearSwitcher);
         }
-
- */
+        */
     }
     @Override
     public void shutDown()
@@ -182,7 +190,6 @@ public class OzoneZulrahPlugin extends Plugin {
                 //start of phase
                 zulrahNpc = npc;
                 potentialRotations = RotationType.findPotentialRotations(npc, stage);
-                phaseTicksHandler.accept(currentRotation, potentialRotations.get(0));
                 log.info("New Zulrah Encounter Started");
 
                 dest = StandLocation.NORTHEAST_TOP.toLocalPoint();
@@ -199,8 +206,9 @@ public class OzoneZulrahPlugin extends Plugin {
                 //zulrah coming up
                 if (zulrahReset)
                 {
-                    zulrahReset = false;
+                    reset();
                     zulrahNpc = npc;
+                    potentialRotations = RotationType.findPotentialRotations(npc, stage);
                 }
                 else
                 {
@@ -214,6 +222,9 @@ public class OzoneZulrahPlugin extends Plugin {
                 }
                 //phaseTicksHandler.accept(currentRotation, potentialRotations.get(0));
                 System.out.println(currentRotation);
+                System.out.println(stage);
+                System.out.println("npc:" + npc);
+                System.out.println("zulrah npc: " + zulrahNpc);
 
                 if(stage == 1)
                 {
@@ -233,7 +244,7 @@ public class OzoneZulrahPlugin extends Plugin {
                     }
                 }
                 setNextDest();
-
+                System.out.println("should attack status:" + shouldAttack);
                 break;
             }
             case 5072:
@@ -305,6 +316,8 @@ public class OzoneZulrahPlugin extends Plugin {
             case 5804:
             {
                 //zuralh death anim
+                execBlocking(()-> Prayers.toggleQuickPrayer(true));
+                execBlocking(()-> Prayers.toggleQuickPrayer(false));
                 reset();
             }
         }
@@ -317,37 +330,52 @@ public class OzoneZulrahPlugin extends Plugin {
             pickItemsUp();
             return;
         }
-        if (client.getGameState() != GameState.LOGGED_IN || zulrahNpc == null) {
+        if (client.getGameState() != GameState.LOGGED_IN || zulrahNpc == null)
+        {
             return;
         }
         ++totalTicks;
-        if (attackTicks > 0) {
+        if (attackTicks > 0)
+        {
             --attackTicks;
         }
-        if (phaseTicks >= 0) {
+        if (phaseTicks >= 0)
+        {
             --phaseTicks;
         }
-        if (!projectilesMap.isEmpty()) {
+        if (!projectilesMap.isEmpty())
+        {
             projectilesMap.values().removeIf(v -> v <= 0);
             projectilesMap.replaceAll((k, v) -> v - 1);
         }
-        if (!toxicCloudsMap.isEmpty()) {
+        if (!toxicCloudsMap.isEmpty())
+        {
             toxicCloudsMap.values().removeIf(v -> v <= 0);
             toxicCloudsMap.replaceAll((k, v) -> v - 1);
         }
-        if(playerAttackTicks >0)
+        if(playerAttackTicks > 0)
         {
             playerAttackTicks--;
         }
-        if (isBlocking)
+        if(movementTicks > 0)
+        {
+            movementTicks--;
+        }
+        if (isBlocking || ozoneTasksController.isRunning())
         {
             return;
         }
         if (dest != null) {
             if (movementTicks > 0)
             {
-                movementTicks--;
-            } else {
+                if(checkHealthWhileRunning())
+                {
+                    flipEat = true;
+                    return;
+                }
+            }
+            else
+            {
                 moveToTile();
                 return;
             }
@@ -384,7 +412,7 @@ public class OzoneZulrahPlugin extends Plugin {
             {
                 return;
             } else {
-                attackZulrah();
+                ozoneTasksController.execBlocking(attackZulrah);
             }
         }
     }
@@ -468,13 +496,13 @@ public class OzoneZulrahPlugin extends Plugin {
         {
             Item food1 = Inventory.getFirst(x-> x.getId() == ItemID.SHARK);
             Item food2 = Inventory.getFirst(x-> x.getId() == ItemID.COOKED_KARAMBWAN);
-            if (food1 != null & food2 != null )
+            if (food1 != null && food2 != null )
             {
                 execBlocking(()-> {
                     if(!Tabs.isOpen(Tab.INVENTORY))
                     {
                         Tabs.open(Tab.INVENTORY);
-                        Time.sleep(5,20);
+                        Time.sleep(5,10);
                     }
                     food1.interact("Eat");
                     Time.sleep(20,30);
@@ -487,10 +515,52 @@ public class OzoneZulrahPlugin extends Plugin {
                 execBlocking( ()-> food1.interact("Eat"));
                 return true;
             }
+            else if(food2 != null)
+            {
+                execBlocking( ()-> food2.interact("Eat"));
+                return true;
+            }
             else
             {
                 //should tp out
                 return false;
+            }
+        }
+        return false;
+    }
+
+    private boolean checkHealthWhileRunning()
+    {
+        if(shouldAttack || flipEat || !client.getLocalPlayer().isMoving())
+        {
+            return false;
+        }
+        int damageTaken = client.getRealSkillLevel(Skill.HITPOINTS) - client.getBoostedSkillLevel(Skill.HITPOINTS);
+        if (damageTaken > 38)
+        {
+            Item food1 = Inventory.getFirst(x -> x.getId() == ItemID.SHARK);
+            Item food2 = Inventory.getFirst(x -> x.getId() == ItemID.COOKED_KARAMBWAN);
+            if (food1 != null && food2 != null) {
+                execBlocking(() -> {
+                    if (!Tabs.isOpen(Tab.INVENTORY)) {
+                        Tabs.open(Tab.INVENTORY);
+                        Time.sleep(5, 10);
+                    }
+                    food1.interact("Eat");
+                    Time.sleep(20, 30);
+                    food2.interact("Eat");
+                });
+                return true;
+            }
+        }
+        else if ( damageTaken > 20)
+        {
+
+            Item food1 = Inventory.getFirst(x-> x.getId() == ItemID.SHARK);
+            if (food1 != null)
+            {
+                execBlocking( ()-> food1.interact("Eat"));
+                return true;
             }
         }
         return false;
@@ -532,7 +602,7 @@ public class OzoneZulrahPlugin extends Plugin {
         }
         return false;
     }
-    private void attackZulrah()
+    public void attackZulrah()
     {
         if(shouldRotateCamera())
         {
@@ -540,21 +610,24 @@ public class OzoneZulrahPlugin extends Plugin {
         }
         if(!Players.getLocal().isInteracting())
         {
-            execBlocking(()->zulrahNpc.interact("Attack"));
-            attackTicks = 5;
-            movementTicks = 1;
+            zulrahNpc.interact("Attack");
+            playerAttackTicks = 4;
+            movementTicks = 2;
         }
     }
 
     private void moveToTile()
     {
-
         WorldPoint target = WorldPoint.fromLocal(client,dest);
         if (Players.getLocal().getWorldLocation().distanceTo(target)>0)
         {
             if(!Movement.isWalking())
             {
-                execBlocking(()->Movement.walk(target));
+                execBlocking(()-> {
+                            Movement.walk(target);
+                            flipEat = false;
+                        }
+                );
                 movementTicks = 4;
             }
         }
@@ -639,12 +712,12 @@ public class OzoneZulrahPlugin extends Plugin {
         }
         if (refZulrah.getZulrahNpc().getType() == ZulrahType.MAGIC && !refZulrah.getZulrahNpc().isJad())
         {
-            ZulrahType.MAGIC.getSetup().switchGear(10);
+            ZulrahType.MAGIC.getSetup().switchGear(7);
             rangePot();
         }
         else
         {
-            ZulrahType.RANGE.getSetup().switchGear(10);
+            ZulrahType.RANGE.getSetup().switchGear(7);
         }
         shouldChangeGear = false;
     }
@@ -789,10 +862,6 @@ public class OzoneZulrahPlugin extends Plugin {
         }
         this.bounds = new Rectangle(0,0,viewPortWidget.getWidth(), (int) (viewPortWidget.getHeight() * 0.75));
 
-        System.out.println(bounds);
-        System.out.println(Perspective.localToCanvas(client,zulrahNpc.getLocalLocation(),0).getAwtPoint());
-        System.out.println(this.bounds.contains(Perspective.localToCanvas(client, zulrahNpc.getLocalLocation(),0).getAwtPoint()));
-
         if(!this.bounds.contains(Perspective.localToCanvas(client,zulrahNpc.getLocalLocation(),0).getAwtPoint()))
         {
             execBlocking(()->cameraController.alignToNorth(zulrahNpc.getLocalLocation()));
@@ -813,7 +882,6 @@ public class OzoneZulrahPlugin extends Plugin {
                     .stream()
                     .mapToInt(ItemStack::getId)
                     .toArray();
-
         }
     }
 

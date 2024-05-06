@@ -97,7 +97,6 @@ public final class GearSetup
 			i.interact(x -> x != null && (x.toLowerCase().contains("wear")
 					|| x.toLowerCase().contains("wield")
 					|| x.toLowerCase().contains("equip")));
-
 			Time.sleep(5,delay);
 		}
 
