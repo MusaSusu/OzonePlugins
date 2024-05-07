@@ -78,7 +78,6 @@ public class OzoneZulrahPlugin extends Plugin {
     private ZulrahOverlay zulrahOverlay;
     @Inject
     private OzoneTasksController ozoneTasksController;
-
     @Inject
     private NaturalMouse naturalmouse;
     private ExecutorService executor;
@@ -89,15 +88,12 @@ public class OzoneZulrahPlugin extends Plugin {
     private int totalTicks = 0;
     private RotationType currentRotation = null;
     private List<RotationType> potentialRotations = new ArrayList<RotationType>();
-    private final Map<LocalPoint, Integer> projectilesMap = new HashMap<LocalPoint, Integer>();
-    private final Map<GameObject, Integer> toxicCloudsMap = new HashMap<GameObject, Integer>();
     @Getter
     private static boolean flipStandLocation = false;
     @Getter
     private static boolean flipPhasePrayer = false;
     @Getter
     private static boolean zulrahReset = false;
-    private final Collection<NPC> snakelings = new ArrayList<NPC>();
     private boolean flipEat = false;
     private int movementTicks = 0;
     private int playerAttackTicks = 0;
@@ -110,11 +106,13 @@ public class OzoneZulrahPlugin extends Plugin {
     private LocalPoint nextDest;
     private static volatile boolean isBlocking = false;
     private static CompletableFuture<?> blockingTask;
-    private ZulrahPhase refZulrah;
+    private ZulrahPhase refZulrah; //needed since sometimes we change prays at the end of the phase and sometimes we change at the start
     private int[] loot;
     private LocalPoint lootLoc;
     private Rectangle bounds;
     private AttackZulrah attackZulrah;
+    private int prayerBoost;
+    private int rotationCount = 0;
 
     private final BiConsumer<RotationType, RotationType> phaseTicksHandler = (current, potential) -> {
         if (zulrahReset)
@@ -153,6 +151,7 @@ public class OzoneZulrahPlugin extends Plugin {
         overlayManager.add(zulrahOverlay);
 
         this.attackZulrah = injector.getInstance(AttackZulrah.class);
+        this.prayerBoost = (int) (client.getRealSkillLevel(Skill.PRAYER) * 0.25) + 7;
         /*
         if (client.getGameState() == GameState.LOGGED_IN)
         {
@@ -206,8 +205,10 @@ public class OzoneZulrahPlugin extends Plugin {
                 //zulrah coming up
                 if (zulrahReset)
                 {
-                    reset();
                     zulrahNpc = npc;
+                    rotationCount++;
+                    zulrahReset = false;
+                    System.out.println("rotation count" + rotationCount);
                     potentialRotations = RotationType.findPotentialRotations(npc, stage);
                 }
                 else
@@ -222,10 +223,8 @@ public class OzoneZulrahPlugin extends Plugin {
                 }
                 //phaseTicksHandler.accept(currentRotation, potentialRotations.get(0));
                 System.out.println(currentRotation);
-                System.out.println(stage);
-                System.out.println("npc:" + npc);
-                System.out.println("zulrah npc: " + zulrahNpc);
 
+                //since we skipped it before.
                 if(stage == 1)
                 {
                     shouldChangeGear = true;
@@ -235,46 +234,38 @@ public class OzoneZulrahPlugin extends Plugin {
 
                 setAttacksLeft();
                 shouldAttack = true;
-
-                if(currentRotation != null)
-                {
-                    if (isLastPhase(currentRotation)){
-                        System.out.println("last phase should attack bool: " + shouldAttack );
-                        break;
-                    }
-                }
                 setNextDest();
-                System.out.println("should attack status:" + shouldAttack);
+
                 break;
             }
             case 5072:
             {
                 System.out.println("Zulrah going down");
-                //zulrah going down
-
                 shouldAttack = false;
+
+                //check if it's the last phase.
+                if (currentRotation != null && isLastPhase(currentRotation))
+                {
+                    reset();
+                    shouldChangeGear = true;
+                    shouldPray = true;
+                    this.refZulrah = RotationType.ROT_A.getZulrahPhases().get(0);
+                    zulrahReset = true;
+                    break;
+                }
 
                 if(getCurrentPhase().getZulrahNpc().getType() == ZulrahType.MELEE)
                 {
                     setDest();
                 }
 
+                //for first encounter, we do not know which gear to change to yet, so we skip the first one and do it when it comes up
                 if(stage > 0)
                 {
                     shouldChangeGear = true;
                     shouldPray = true;
                     this.refZulrah = currentRotation == null ? getNextPhase(potentialRotations.get(0)) : getNextPhase(currentRotation);
                 }
-
-                if (currentRotation == null || !isLastPhase(currentRotation)) break;
-                stage = 0;
-                currentRotation = null;
-                potentialRotations.clear();
-                snakelings.clear();
-                flipStandLocation = false;
-                flipPhasePrayer = false;
-                zulrahReset = true;
-                System.out.println("Resetting Zulrah");
                 break;
             }
             case 5069: {
@@ -343,16 +334,6 @@ public class OzoneZulrahPlugin extends Plugin {
         {
             --phaseTicks;
         }
-        if (!projectilesMap.isEmpty())
-        {
-            projectilesMap.values().removeIf(v -> v <= 0);
-            projectilesMap.replaceAll((k, v) -> v - 1);
-        }
-        if (!toxicCloudsMap.isEmpty())
-        {
-            toxicCloudsMap.values().removeIf(v -> v <= 0);
-            toxicCloudsMap.replaceAll((k, v) -> v - 1);
-        }
         if(playerAttackTicks > 0)
         {
             playerAttackTicks--;
@@ -415,6 +396,7 @@ public class OzoneZulrahPlugin extends Plugin {
                 ozoneTasksController.execBlocking(attackZulrah);
             }
         }
+
     }
 
     @Nullable
@@ -425,7 +407,7 @@ public class OzoneZulrahPlugin extends Plugin {
         {
             type = potentialRotations.get(0);
         }
-        return stage >= type.getZulrahPhases().size() ? null : type.getZulrahPhases().get(stage);
+        return type.getZulrahPhases().get(stage);
     }
 
 
@@ -463,11 +445,8 @@ public class OzoneZulrahPlugin extends Plugin {
         totalTicks = 0;
         currentRotation = null;
         potentialRotations.clear();
-        projectilesMap.clear();
-        toxicCloudsMap.clear();
         flipStandLocation = false;
         flipPhasePrayer = false;
-        zulrahReset = false;
         log.info("Zulrah Reset!");
     }
 
@@ -536,6 +515,8 @@ public class OzoneZulrahPlugin extends Plugin {
             return false;
         }
         int damageTaken = client.getRealSkillLevel(Skill.HITPOINTS) - client.getBoostedSkillLevel(Skill.HITPOINTS);
+        int prayerTaken = client.getRealSkillLevel(Skill.PRAYER) - client.getBoostedSkillLevel(Skill.PRAYER);
+        Item pot = Inventory.getFirst(x-> x.getName().contains("Prayer potion"));
         if (damageTaken > 38)
         {
             Item food1 = Inventory.getFirst(x -> x.getId() == ItemID.SHARK);
@@ -548,6 +529,10 @@ public class OzoneZulrahPlugin extends Plugin {
                     }
                     food1.interact("Eat");
                     Time.sleep(20, 30);
+                    if (pot != null && prayerTaken > prayerBoost)
+                    {
+                        pot.interact("Drink");
+                    }
                     food2.interact("Eat");
                 });
                 return true;
@@ -560,6 +545,10 @@ public class OzoneZulrahPlugin extends Plugin {
             if (food1 != null)
             {
                 execBlocking( ()-> food1.interact("Eat"));
+                if (pot != null && prayerTaken > prayerBoost)
+                {
+                    pot.interact("Drink");
+                }
                 return true;
             }
         }
@@ -743,7 +732,6 @@ public class OzoneZulrahPlugin extends Plugin {
 
     private void setDest()
     {
-        System.out.println("Setting tile to walk");
         this.dest = this.nextDest;
         this.movementTicks = getCurrentPhase().getAttributes().getTicksToMove();
     }
@@ -760,25 +748,16 @@ public class OzoneZulrahPlugin extends Plugin {
 
     private void setAttacksLeft()
     {
-        if (zulrahReset)
-        {
-            attacksLeft = 9;
+        ZulrahPhase p = getCurrentPhase();
+        Preconditions.checkNotNull(p, "Attempted to set phase ticks but current Zulrah phase was somehow null. Stage: " + stage);
+        attacksLeft = p.getAttributes().getPhaseAttacks();
+        if (currentRotation != null) {
+            System.out.println("rotation = B check" + currentRotation.getRotationName().equals("Rotation B"));
+            System.out.println("equipment check" + p.getZulrahNpc().getType().getSetup().hasExactItem("Toxic blowpipe"));
         }
-        else
-        {
-            ZulrahPhase p = getCurrentPhase();
-            Preconditions.checkNotNull(p, "Attempted to set phase ticks but current Zulrah phase was somehow null. Stage: " + stage);
-            attacksLeft = p.getAttributes().getPhaseAttacks();
-            if(currentRotation != null)
-            {
-                System.out.println("rotation = B check" + currentRotation.getRotationName().equals("Rotation B"));
-                System.out.println("equipment check" + p.getZulrahNpc().getType().getSetup().hasExactItem("Toxic blowpipe"));
-            }
-            if (stage == 4 && currentRotation.getRotationName().equals("Rotation B") && p.getZulrahNpc().getType().getSetup().hasExactItem("Toxic blowpipe"))
-            {
-                System.out.println("rotation B change attacks left");
-                attacksLeft = 5;
-            }
+        if (stage == 4 && currentRotation.getRotationName().equals("Rotation B") && p.getZulrahNpc().getType().getSetup().hasExactItem("Toxic blowpipe")) {
+            System.out.println("rotation B change attacks left");
+            attacksLeft = 5;
         }
     }
 
