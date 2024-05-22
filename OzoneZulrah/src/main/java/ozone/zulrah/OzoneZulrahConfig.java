@@ -64,4 +64,11 @@ public interface OzoneZulrahConfig extends Config
 		return Keybind.NOT_SET;
 	}
 
+	@ConfigItem(
+			keyName = "Rotate camera",
+			name = "Camera",
+			description = "Enable for camera rotation"
+	)
+	default boolean shouldRotateCamera(){return false;}
+
 }

@@ -298,6 +298,7 @@ public class OzoneZulrahPlugin extends Plugin {
                 attacksLeft--;
                 attackTicks = 8;
                 flipStandLocation = !flipStandLocation;
+                movementTicks = 1;
                 getCurrentPhase().getAttributes().getCurrentDynamicStandLocation().ifPresent(x-> dest = x.toLocalPoint());
                 break;
             }
@@ -830,6 +831,10 @@ public class OzoneZulrahPlugin extends Plugin {
 
     private boolean shouldRotateCamera()
     {
+        if(!config.shouldRotateCamera())
+        {
+            return false;
+        }
         Widget viewPortWidget;
         if (client.isResized())
         {
