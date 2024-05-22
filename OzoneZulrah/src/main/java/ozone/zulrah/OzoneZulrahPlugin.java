@@ -713,6 +713,8 @@ public class OzoneZulrahPlugin extends Plugin {
     }
     private void execBlocking(Runnable r)
     {
+        //This is probably the best way to queue tasks. Since each game ticks multiple tasks end up being queued and the game
+        //state can be changed each tick, we only want the most current task to be queued as well as eliminating duplicate tasks.
         if(isBlocking)
         {
             blockingTask.thenRunAsync(()-> {
