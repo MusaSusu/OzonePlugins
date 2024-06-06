@@ -38,6 +38,6 @@ public enum StandLocation
 	{
 		int x = CENTER.localX - this.localX;
 		int y = CENTER.localY - this.localY;
-		return new LocalPoint(start.getX() + x, start.getY() + y);
+		return new LocalPoint(start.getX() - x + 128, start.getY() - y + 256);
 	}
 }
