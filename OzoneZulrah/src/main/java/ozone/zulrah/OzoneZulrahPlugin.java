@@ -7,9 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.api.events.AnimationChanged;
-import net.runelite.api.events.GameStateChanged;
-import net.runelite.api.events.GameTick;
+import net.runelite.api.events.*;
 import net.runelite.api.widgets.Widget;
 import net.runelite.api.widgets.WidgetInfo;
 import net.runelite.client.config.ConfigManager;
@@ -43,8 +41,11 @@ import ozone.zulrah.rotationutils.ZulrahData;
 import ozone.zulrah.rotationutils.ZulrahPhase;
 import ozone.zulrah.tasks.AttackZulrah;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
+import javax.swing.JViewport;
+import java.awt.AWTException;
 import java.awt.Rectangle;
 import java.util.*;
 import java.util.List;
@@ -53,6 +54,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
+
+import static net.runelite.api.Perspective.COSINE;
+import static net.runelite.api.Perspective.SINE;
 
 
 @Extension
@@ -81,6 +85,7 @@ public class OzoneZulrahPlugin extends Plugin {
     @Inject
     private NaturalMouse naturalmouse;
     private ExecutorService executor;
+    private ExecutorService cameraExecutor;
     private NPC zulrahNpc = null;
     private int stage = 0;
     private int phaseTicks = -1;
@@ -113,6 +118,26 @@ public class OzoneZulrahPlugin extends Plugin {
     private AttackZulrah attackZulrah;
     private int prayerBoost;
     private int rotationCount = 0;
+    private Widget viewPortWidget;
+    private volatile boolean shouldRotateCamera;
+    private volatile int deltaX;
+    private LocalPoint startPoint;
+
+    private Widget getViewPortWidget()
+    {
+        if (viewPortWidget == null)
+        {
+            if (client.isResized())
+            {
+                this.viewPortWidget = client.getWidget(WidgetInfo.RESIZABLE_VIEWPORT_OLD_SCHOOL_BOX);
+            }
+            else
+            {
+                this.viewPortWidget = client.getWidget(WidgetInfo.FIXED_VIEWPORT);
+            }
+        }
+        return viewPortWidget;
+    }
 
     private final BiConsumer<RotationType, RotationType> phaseTicksHandler = (current, potential) -> {
         if (zulrahReset)
@@ -147,6 +172,7 @@ public class OzoneZulrahPlugin extends Plugin {
         ZulrahType.setRangedMeleePhaseGear(new GearSetup(mageGearNames));
 
         executor = Executors.newSingleThreadExecutor();
+        cameraExecutor = Executors.newSingleThreadExecutor();
 
         overlayManager.add(zulrahOverlay);
 
@@ -307,7 +333,7 @@ public class OzoneZulrahPlugin extends Plugin {
                 break;
             case 5804:
             {
-                //zuralh death anim
+                //zulrah death anim
                 execBlocking(()-> Prayers.toggleQuickPrayer(true));
                 execBlocking(()-> Prayers.toggleQuickPrayer(false));
                 reset();
@@ -594,7 +620,7 @@ public class OzoneZulrahPlugin extends Plugin {
     }
     public void attackZulrah()
     {
-        if(shouldRotateCamera())
+        if(shouldRotateCamera)
         {
             return;
         }
@@ -624,7 +650,19 @@ public class OzoneZulrahPlugin extends Plugin {
         else
         {
             dest = null;
-            shouldRotateCamera();
+            if(shouldRotateCamera)
+            {
+                execBlocking(()->
+                        {
+                            this.shouldRotateCamera = false;
+                            try {
+                                cameraController.moveCamera(deltaX,0);
+                            } catch (AWTException e) {
+                                throw new RuntimeException(e);
+                            }
+                        }
+                        );
+            }
         }
     }
 
@@ -743,6 +781,7 @@ public class OzoneZulrahPlugin extends Plugin {
     {
         ZulrahPhase p = currentRotation == null ? getNextPhase(potentialRotations.get(0)) : getNextPhase(currentRotation);
         nextDest = p.getAttributes().getStandLocation().toLocalPoint();
+        shouldRotateCamera(p.getZulrahNpc().getZulrahLocation().toLocalPoint(),nextDest);
     }
     private void checkShouldAttack()
     {
@@ -814,39 +853,11 @@ public class OzoneZulrahPlugin extends Plugin {
 
     private boolean rotateCamera()
     {
-        if (this.bounds == null)
-        {
-            Widget viewPortWidget;
-            if (client.isResized())
-            {
-                viewPortWidget = client.getWidget(WidgetInfo.RESIZABLE_VIEWPORT_OLD_SCHOOL_BOX);
-            }
-            else
-            {
-                viewPortWidget = client.getWidget(WidgetInfo.FIXED_VIEWPORT);
-            }
-
-            this.bounds = viewPortWidget.getBounds();
-        }
-        return false;
-    }
-
-    private boolean shouldRotateCamera()
-    {
         if(!config.shouldRotateCamera())
         {
             return false;
         }
-        Widget viewPortWidget;
-        if (client.isResized())
-        {
-            viewPortWidget = client.getWidget(WidgetInfo.RESIZABLE_VIEWPORT_OLD_SCHOOL_BOX);
-        }
-        else
-        {
-            viewPortWidget = client.getWidget(WidgetInfo.FIXED_VIEWPORT);
-        }
-        this.bounds = new Rectangle(0,0,viewPortWidget.getWidth(), (int) (viewPortWidget.getHeight() * 0.75));
+        this.bounds = new Rectangle(0,0,getViewPortWidget().getWidth(), (int) (getViewPortWidget().getHeight() * 0.75));
 
         if(!this.bounds.contains(Perspective.localToCanvas(client,zulrahNpc.getLocalLocation(),0).getAwtPoint()))
         {
@@ -854,6 +865,69 @@ public class OzoneZulrahPlugin extends Plugin {
             return true;
         }
         return false;
+    }
+
+    private void shouldRotateCamera(LocalPoint object, LocalPoint tile)
+    {
+        if(!config.shouldRotateCamera())
+        {
+            return;
+        }
+        this.bounds = new Rectangle(0,0,getViewPortWidget().getWidth(), (int) (getViewPortWidget().getHeight() * 0.75));
+
+        if(!this.bounds.contains(localToCanvasAtTile(client,object,tile,0).getAwtPoint()))
+        {
+            System.out.println("should rotate camera");
+            CompletableFuture.runAsync( ()->
+                    {
+                       this.deltaX = cameraController.deltaFromLocalToNorthAtTile(tile,object);
+                       this.shouldRotateCamera = true;
+                    }
+            ,cameraExecutor);
+        }
+    }
+
+    public static Point localToCanvasAtTile(@Nonnull Client client, @Nonnull LocalPoint point, @Nonnull LocalPoint tile, int plane)
+    {
+        final int tileHeight = Perspective.getTileHeight(client, point, plane);
+        int x = point.getX();
+        int y = point.getY();
+        int z = tileHeight;
+
+        if (x >= 128 && y >= 128 && x <= 13056 && y <= 13056)
+        {
+            int cameraX = tile.getX() - (Players.getLocal().getLocalLocation().getX() - client.getCameraX());
+            int cameraY = tile.getY() - (Players.getLocal().getLocalLocation().getY() - client.getCameraY());
+            int cameraZ = client.getCameraZ();
+            x -= cameraX;
+            y -= cameraY;
+            z -= cameraZ;
+
+            final int cameraPitch = client.getCameraPitch();
+            final int cameraYaw = client.getCameraYaw();
+
+            final int pitchSin = SINE[cameraPitch];
+            final int pitchCos = COSINE[cameraPitch];
+            final int yawSin = SINE[cameraYaw];
+            final int yawCos = COSINE[cameraYaw];
+
+            final int
+                    x1 = x * yawCos + y * yawSin >> 16,
+                    y1 = y * yawCos - x * yawSin >> 16,
+                    y2 = z * pitchCos - y1 * pitchSin >> 16,
+                    z1 = y1 * pitchCos + z * pitchSin >> 16;
+
+            if (z1 >= 50)
+            {
+                final int scale = client.getScale();
+                final int pointX = client.getViewportWidth() / 2 + x1 * scale / z1;
+                final int pointY = client.getViewportHeight() / 2 + y2 * scale / z1;
+                return new Point(
+                        pointX + client.getViewportXOffset(),
+                        pointY + client.getViewportYOffset());
+            }
+        }
+        return null;
     }
 
     @Subscribe
@@ -868,6 +942,28 @@ public class OzoneZulrahPlugin extends Plugin {
                     .stream()
                     .mapToInt(ItemStack::getId)
                     .toArray();
+        }
+    }
+
+    @Subscribe
+    public void onResizeableChanged(ResizeableChanged resizeableChanged)
+    {
+        if (resizeableChanged.isResized())
+        {
+            this.viewPortWidget = client.getWidget(WidgetInfo.RESIZABLE_VIEWPORT_OLD_SCHOOL_BOX);
+        }
+        else
+        {
+            this.viewPortWidget = client.getWidget(WidgetInfo.FIXED_VIEWPORT);
+        }
+    }
+
+    @Subscribe
+    public void onNPCSpawned(NpcSpawned npc)
+    {
+        if(zulrahNpc == null)
+        {
+            startPoint = Players.getLocal().getLocalLocation();
         }
     }
 

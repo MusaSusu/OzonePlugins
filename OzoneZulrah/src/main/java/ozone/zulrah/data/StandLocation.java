@@ -33,4 +33,11 @@ public enum StandLocation
 	{
 		return new LocalPoint(this.localX, this.localY);
 	}
+
+	public LocalPoint toLocalPointFromOffset(LocalPoint start)
+	{
+		int x = CENTER.localX - this.localX;
+		int y = CENTER.localY - this.localY;
+		return new LocalPoint(start.getX() + x, start.getY() + y);
+	}
 }

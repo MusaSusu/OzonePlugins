@@ -175,9 +175,6 @@ public class OzoneTesting extends Plugin {
             int cameraX = tile.getX() - (Players.getLocal().getLocalLocation().getX() - client.getCameraX());
             int cameraY = tile.getY() - (Players.getLocal().getLocalLocation().getY() - client.getCameraY());
             int cameraZ = client.getCameraZ();
-            System.out.println(cameraX);
-            System.out.println(cameraY);
-            System.out.println(cameraZ);
             x -= cameraX;
             y -= cameraY;
             z -= cameraZ;
