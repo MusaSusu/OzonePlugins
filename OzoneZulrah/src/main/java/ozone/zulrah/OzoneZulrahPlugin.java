@@ -41,11 +41,8 @@ import ozone.zulrah.rotationutils.ZulrahData;
 import ozone.zulrah.rotationutils.ZulrahPhase;
 import ozone.zulrah.tasks.AttackZulrah;
 
-import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
-import javax.swing.JViewport;
-import java.awt.AWTException;
 import java.awt.Rectangle;
 import java.util.*;
 import java.util.List;
@@ -54,9 +51,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
-
-import static net.runelite.api.Perspective.COSINE;
-import static net.runelite.api.Perspective.SINE;
 
 
 @Extension
@@ -85,7 +79,6 @@ public class OzoneZulrahPlugin extends Plugin {
     @Inject
     private NaturalMouse naturalmouse;
     private ExecutorService executor;
-    private ExecutorService cameraExecutor;
     private NPC zulrahNpc = null;
     private int stage = 0;
     private int phaseTicks = -1;
@@ -99,7 +92,7 @@ public class OzoneZulrahPlugin extends Plugin {
     private static boolean flipPhasePrayer = false;
     @Getter
     private static boolean zulrahReset = false;
-    private boolean flipEat = false;
+    private boolean shouldEatWhileRunning = false;
     private int movementTicks = 0;
     private int playerAttackTicks = 0;
     private boolean shouldAttack;
@@ -119,8 +112,6 @@ public class OzoneZulrahPlugin extends Plugin {
     private int prayerBoost;
     private int rotationCount = 0;
     private Widget viewPortWidget;
-    private volatile boolean shouldRotateCamera;
-    private volatile int deltaX;
     private LocalPoint startPoint;
 
     private Widget getViewPortWidget()
@@ -172,7 +163,6 @@ public class OzoneZulrahPlugin extends Plugin {
         ZulrahType.setRangedMeleePhaseGear(new GearSetup(mageGearNames));
 
         executor = Executors.newSingleThreadExecutor();
-        cameraExecutor = Executors.newSingleThreadExecutor();
 
         overlayManager.add(zulrahOverlay);
 
@@ -214,15 +204,16 @@ public class OzoneZulrahPlugin extends Plugin {
             {
                 //start of phase
                 zulrahNpc = npc;
+                startPoint = Players.getLocal().getLocalLocation();
                 potentialRotations = RotationType.findPotentialRotations(npc, stage);
                 log.info("New Zulrah Encounter Started");
 
-                dest = StandLocation.NORTHEAST_TOP.toLocalPoint();
+                dest = StandLocation.NORTHEAST_TOP.toLocalPointFromOffset(startPoint);
                 this.attacksLeft = 9;
-                shouldAttack = true;
                 this.refZulrah = getCurrentPhase();
                 execBlocking(this::changePrays);
                 execBlocking(this::prePray);
+                shouldAttack = true;
                 break;
             }
             case 5073:
@@ -232,9 +223,7 @@ public class OzoneZulrahPlugin extends Plugin {
                 if (zulrahReset)
                 {
                     zulrahNpc = npc;
-                    rotationCount++;
                     zulrahReset = false;
-                    System.out.println("rotation count" + rotationCount);
                     potentialRotations = RotationType.findPotentialRotations(npc, stage);
                 }
                 else
@@ -325,7 +314,7 @@ public class OzoneZulrahPlugin extends Plugin {
                 attackTicks = 8;
                 flipStandLocation = !flipStandLocation;
                 movementTicks = 1;
-                getCurrentPhase().getAttributes().getCurrentDynamicStandLocation().ifPresent(x-> dest = x.toLocalPoint());
+                getCurrentPhase().getAttributes().getCurrentDynamicStandLocation().ifPresent(x-> dest = x.toLocalPointFromOffset(startPoint));
                 break;
             }
             case 5808:
@@ -334,7 +323,11 @@ public class OzoneZulrahPlugin extends Plugin {
             case 5804:
             {
                 //zulrah death anim
-                execBlocking(()-> Prayers.toggleQuickPrayer(true));
+                execBlocking(()-> {
+                    Prayers.toggleQuickPrayer(true);
+                    Time.sleep(50,100);
+                }
+                );
                 execBlocking(()-> Prayers.toggleQuickPrayer(false));
                 reset();
             }
@@ -378,7 +371,7 @@ public class OzoneZulrahPlugin extends Plugin {
             {
                 if(checkHealthWhileRunning())
                 {
-                    flipEat = true;
+                    shouldEatWhileRunning = true;
                     return;
                 }
             }
@@ -420,10 +413,9 @@ public class OzoneZulrahPlugin extends Plugin {
             {
                 return;
             } else {
-                ozoneTasksController.execBlocking(attackZulrah);
+                attackZulrah();
             }
         }
-
     }
 
     @Nullable
@@ -537,7 +529,7 @@ public class OzoneZulrahPlugin extends Plugin {
 
     private boolean checkHealthWhileRunning()
     {
-        if(shouldAttack || flipEat || !client.getLocalPlayer().isMoving())
+        if(shouldAttack || shouldEatWhileRunning || !client.getLocalPlayer().isMoving())
         {
             return false;
         }
@@ -620,15 +612,21 @@ public class OzoneZulrahPlugin extends Plugin {
     }
     public void attackZulrah()
     {
-        if(shouldRotateCamera)
+        if(shouldRotateCamera())
         {
             return;
         }
-        if(!Players.getLocal().isInteracting())
+        if(!Players.getLocal().isInteracting() && zulrahNpc.getAnimation() != 5073)
         {
             zulrahNpc.interact("Attack");
-            playerAttackTicks = 4;
-            movementTicks = 2;
+            if(Players.getLocal().isInteracting())
+            {
+                playerAttackTicks = 4;
+                if(dest != null)
+                {
+                    moveToTile();
+                }
+            }
         }
     }
 
@@ -641,7 +639,10 @@ public class OzoneZulrahPlugin extends Plugin {
             {
                 execBlocking(()-> {
                             Movement.walk(target);
-                            flipEat = false;
+                            if (!shouldAttack)
+                            {
+                                shouldEatWhileRunning = false;
+                            }
                         }
                 );
                 movementTicks = 4;
@@ -650,19 +651,7 @@ public class OzoneZulrahPlugin extends Plugin {
         else
         {
             dest = null;
-            if(shouldRotateCamera)
-            {
-                execBlocking(()->
-                        {
-                            this.shouldRotateCamera = false;
-                            try {
-                                cameraController.moveCamera(deltaX,0);
-                            } catch (AWTException e) {
-                                throw new RuntimeException(e);
-                            }
-                        }
-                        );
-            }
+            shouldRotateCamera();
         }
     }
 
@@ -749,27 +738,6 @@ public class OzoneZulrahPlugin extends Plugin {
         }
         shouldChangeGear = false;
     }
-    private void execBlocking(Runnable r)
-    {
-        //This is probably the best way to queue tasks. Since each game ticks multiple tasks end up being queued and the game
-        //state can be changed each tick, we only want the most current task to be queued as well as eliminating duplicate tasks.
-        if(isBlocking)
-        {
-            blockingTask.thenRunAsync(()-> {
-                isBlocking = true;
-                r.run();
-                isBlocking = false;
-                },executor);
-            return;
-        }
-
-        isBlocking = true;
-
-        blockingTask = CompletableFuture.runAsync(() -> {
-            r.run();
-            isBlocking = false;
-        }, executor);
-    }
 
     private void setDest()
     {
@@ -780,8 +748,7 @@ public class OzoneZulrahPlugin extends Plugin {
     private void setNextDest()
     {
         ZulrahPhase p = currentRotation == null ? getNextPhase(potentialRotations.get(0)) : getNextPhase(currentRotation);
-        nextDest = p.getAttributes().getStandLocation().toLocalPoint();
-        shouldRotateCamera(p.getZulrahNpc().getZulrahLocation().toLocalPoint(),nextDest);
+        nextDest = p.getAttributes().getStandLocation().toLocalPointFromOffset(startPoint);
     }
     private void checkShouldAttack()
     {
@@ -851,7 +818,29 @@ public class OzoneZulrahPlugin extends Plugin {
         }
     }
 
-    private boolean rotateCamera()
+    private void execBlocking(Runnable r)
+    {
+        //This is probably the best way to queue tasks. Since each game ticks multiple tasks end up being queued and the game
+        //state can be changed each tick, we only want the most current task to be queued as well as eliminating duplicate tasks.
+        if(isBlocking)
+        {
+            blockingTask.thenRunAsync(()-> {
+                isBlocking = true;
+                r.run();
+                isBlocking = false;
+            },executor);
+            return;
+        }
+
+        isBlocking = true;
+
+        blockingTask = CompletableFuture.runAsync(() -> {
+            r.run();
+            isBlocking = false;
+        }, executor);
+    }
+
+    private boolean shouldRotateCamera()
     {
         if(!config.shouldRotateCamera())
         {
@@ -866,70 +855,6 @@ public class OzoneZulrahPlugin extends Plugin {
         }
         return false;
     }
-
-    private void shouldRotateCamera(LocalPoint object, LocalPoint tile)
-    {
-        if(!config.shouldRotateCamera())
-        {
-            return;
-        }
-        this.bounds = new Rectangle(0,0,getViewPortWidget().getWidth(), (int) (getViewPortWidget().getHeight() * 0.75));
-
-        if(!this.bounds.contains(localToCanvasAtTile(client,object,tile,0).getAwtPoint()))
-        {
-            System.out.println("should rotate camera");
-            CompletableFuture.runAsync( ()->
-                    {
-                       this.deltaX = cameraController.deltaFromLocalToNorthAtTile(tile,object);
-                       this.shouldRotateCamera = true;
-                    }
-            ,cameraExecutor);
-        }
-    }
-
-    public static Point localToCanvasAtTile(@Nonnull Client client, @Nonnull LocalPoint point, @Nonnull LocalPoint tile, int plane)
-    {
-        final int tileHeight = Perspective.getTileHeight(client, point, plane);
-        int x = point.getX();
-        int y = point.getY();
-        int z = tileHeight;
-
-        if (x >= 128 && y >= 128 && x <= 13056 && y <= 13056)
-        {
-            int cameraX = tile.getX() - (Players.getLocal().getLocalLocation().getX() - client.getCameraX());
-            int cameraY = tile.getY() - (Players.getLocal().getLocalLocation().getY() - client.getCameraY());
-            int cameraZ = client.getCameraZ();
-            x -= cameraX;
-            y -= cameraY;
-            z -= cameraZ;
-
-            final int cameraPitch = client.getCameraPitch();
-            final int cameraYaw = client.getCameraYaw();
-
-            final int pitchSin = SINE[cameraPitch];
-            final int pitchCos = COSINE[cameraPitch];
-            final int yawSin = SINE[cameraYaw];
-            final int yawCos = COSINE[cameraYaw];
-
-            final int
-                    x1 = x * yawCos + y * yawSin >> 16,
-                    y1 = y * yawCos - x * yawSin >> 16,
-                    y2 = z * pitchCos - y1 * pitchSin >> 16,
-                    z1 = y1 * pitchCos + z * pitchSin >> 16;
-
-            if (z1 >= 50)
-            {
-                final int scale = client.getScale();
-                final int pointX = client.getViewportWidth() / 2 + x1 * scale / z1;
-                final int pointY = client.getViewportHeight() / 2 + y2 * scale / z1;
-                return new Point(
-                        pointX + client.getViewportXOffset(),
-                        pointY + client.getViewportYOffset());
-            }
-        }
-        return null;
-    }
-
     @Subscribe
     public void onNpcLootReceived(NpcLootReceived npcLootReceived)
     {
