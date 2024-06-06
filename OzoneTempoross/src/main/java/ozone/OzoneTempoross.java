@@ -316,7 +316,7 @@ public class OzoneTempoross extends Plugin {
 
                     continue;
                 }
-                if (local.canTravelInDirection(client, dx, dy)){
+                if (local.canTravelInDirection(client.getTopLevelWorldView(), dx, dy)){
                     points.add(local.toWorldPoint().dx(dx).dy(dy));
                 }
             }
