@@ -24,7 +24,6 @@ import net.unethicalite.api.entities.Players;
 import net.unethicalite.api.entities.TileItems;
 import net.unethicalite.api.game.Combat;
 import net.unethicalite.api.game.Skills;
-import net.unethicalite.api.input.naturalmouse.NaturalMouse;
 import net.unethicalite.api.items.Inventory;
 import net.unethicalite.api.movement.CameraController;
 import net.unethicalite.api.movement.Movement;
@@ -39,7 +38,6 @@ import ozone.zulrah.overlays.ZulrahOverlay;
 import ozone.zulrah.rotationutils.RotationType;
 import ozone.zulrah.rotationutils.ZulrahData;
 import ozone.zulrah.rotationutils.ZulrahPhase;
-import ozone.zulrah.tasks.AttackZulrah;
 
 import javax.annotation.Nullable;
 import javax.inject.Inject;
@@ -61,8 +59,6 @@ import java.util.stream.Collectors;
 @Slf4j
 public class OzoneZulrahPlugin extends Plugin {
     @Inject
-    private NaturalMouse naturalMouse;
-    @Inject
     private Client client;
     @Inject
     private OzoneZulrahConfig config;
@@ -74,10 +70,6 @@ public class OzoneZulrahPlugin extends Plugin {
     private OverlayManager overlayManager;
     @Inject
     private ZulrahOverlay zulrahOverlay;
-    @Inject
-    private OzoneTasksController ozoneTasksController;
-    @Inject
-    private NaturalMouse naturalmouse;
     private ExecutorService executor;
     private NPC zulrahNpc = null;
     private int stage = 0;
@@ -104,13 +96,9 @@ public class OzoneZulrahPlugin extends Plugin {
     private LocalPoint nextDest;
     private static volatile boolean isBlocking = false;
     private static CompletableFuture<?> blockingTask;
-    private ZulrahPhase refZulrah; //needed since sometimes we change prays at the end of the phase and sometimes we change at the start
+    private ZulrahPhase refZulrah; //needed since sometimes we change prays at the end of the phase  and sometimes we change at the start
     private int[] loot;
-    private LocalPoint lootLoc;
-    private Rectangle bounds;
-    private AttackZulrah attackZulrah;
     private int prayerBoost;
-    private int rotationCount = 0;
     private Widget viewPortWidget;
     private LocalPoint startPoint;
 
@@ -166,7 +154,6 @@ public class OzoneZulrahPlugin extends Plugin {
 
         overlayManager.add(zulrahOverlay);
 
-        this.attackZulrah = injector.getInstance(AttackZulrah.class);
         this.prayerBoost = (int) (client.getRealSkillLevel(Skill.PRAYER) * 0.25) + 7;
         /*
         if (client.getGameState() == GameState.LOGGED_IN)
@@ -362,7 +349,7 @@ public class OzoneZulrahPlugin extends Plugin {
         {
             movementTicks--;
         }
-        if (isBlocking || ozoneTasksController.isRunning())
+        if (isBlocking)
         {
             return;
         }
@@ -846,9 +833,10 @@ public class OzoneZulrahPlugin extends Plugin {
         {
             return false;
         }
-        this.bounds = new Rectangle(0,0,getViewPortWidget().getWidth(), (int) (getViewPortWidget().getHeight() * 0.75));
 
-        if(!this.bounds.contains(Perspective.localToCanvas(client,zulrahNpc.getLocalLocation(),0).getAwtPoint()))
+        Rectangle bounds = new Rectangle(0,0,getViewPortWidget().getWidth(), (int) (getViewPortWidget().getHeight() * 0.75));
+
+        if(!bounds.contains(Perspective.localToCanvas(client,zulrahNpc.getLocalLocation(),0).getAwtPoint()))
         {
             execBlocking(()->cameraController.alignToNorth(zulrahNpc.getLocalLocation()));
             return true;
@@ -861,7 +849,6 @@ public class OzoneZulrahPlugin extends Plugin {
         if (npcLootReceived.getNpc().getName().equals("Zulrah"))
         {
             shouldPickItemsUp = true;
-            lootLoc = npcLootReceived.getItems().iterator().next().getLocation();
             loot = npcLootReceived
                     .getItems()
                     .stream()
