@@ -1,4 +1,4 @@
-package ozone.zulrah.data;
+package OzonePlugins.data;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
