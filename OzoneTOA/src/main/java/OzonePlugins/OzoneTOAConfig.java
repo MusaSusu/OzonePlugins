@@ -6,9 +6,13 @@ import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 import OzonePlugins.config.MagePrayer;
 import OzonePlugins.config.RangePrayer;
+import net.runelite.client.config.Keybind;
 
-@ConfigGroup("ozone TOA")
+@ConfigGroup(OzoneTOAConfig.CONFIG_GROUP)
 public interface OzoneTOAConfig extends Config {
+
+    String CONFIG_GROUP = "ozonetoascript";
+
     @ConfigItem(
             keyName = "rangeGear",
             name = "Ranged gear names",
@@ -73,5 +77,15 @@ public interface OzoneTOAConfig extends Config {
     default MeleePrayer meleePrayer()
     {
         return MeleePrayer.PIETY;
+    }
+
+    @ConfigItem(
+            keyName = "Script Hotkey",
+            name = "Script Hotkey",
+            description = "Set hotkey to start/pause script"
+    )
+    default Keybind getHotkey()
+    {
+        return Keybind.NOT_SET;
     }
 }
