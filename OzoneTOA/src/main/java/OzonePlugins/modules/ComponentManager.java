@@ -28,7 +28,7 @@ import java.util.Set;
 public class ComponentManager
 {
 
-	private final EventBZus eventBus;
+	private final EventBus eventBus;
 	private final GameEventManager gameEventManager;
 	private final RaidStateTracker raidStateTracker;
 	private final Set<PluginLifecycleComponent> components;
