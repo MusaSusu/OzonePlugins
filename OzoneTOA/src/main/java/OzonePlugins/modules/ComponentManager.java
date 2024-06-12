@@ -107,6 +107,7 @@ public class ComponentManager
 			component.startUp();
 			gameEventManager.simulateGameEvents(component);
 			states.put(component, true);
+			System.out.println("Enabling ToA plugin component:" + component.getClass().getName() );
 		}
 		catch (Exception e)
 		{
@@ -129,6 +130,8 @@ public class ComponentManager
 		try
 		{
 			component.shutDown();
+			System.out.println("Disabling ToA plugin component:" + component.getClass().getName() );
+
 		}
 		catch (Exception e)
 		{
