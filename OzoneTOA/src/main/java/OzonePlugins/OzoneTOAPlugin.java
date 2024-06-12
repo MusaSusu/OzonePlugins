@@ -8,6 +8,8 @@ import OzonePlugins.modules.TOAModule;
 import com.google.inject.Binder;
 import com.google.inject.Provides;
 import net.runelite.api.Client;
+import net.runelite.api.coords.LocalPoint;
+import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.GameTick;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
@@ -15,6 +17,7 @@ import net.runelite.client.input.KeyManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.util.HotkeyListener;
+import net.unethicalite.api.entities.Players;
 import org.pf4j.Extension;
 
 import javax.inject.Inject;
@@ -44,7 +47,6 @@ public class OzoneTOAPlugin extends Plugin {
 
     private boolean isPaused = true;
     private RaidState raidState;
-
     @Provides
     @Singleton
     OzoneTOAConfig provideConfig(ConfigManager configManager)
@@ -69,6 +71,7 @@ public class OzoneTOAPlugin extends Plugin {
 
         GearTypes.setMagePhaseGear(new GearSetup(rangeGearNames));
         GearTypes.setRangedMeleePhaseGear(new GearSetup(mageGearNames));
+        GearTypes.setMeleePhaseGear(new GearSetup(meleeGearNames));
 
         keyManager.registerKeyListener(scriptControl);
 
@@ -102,7 +105,7 @@ public class OzoneTOAPlugin extends Plugin {
                 {
                     this.zebakManager = injector.getInstance(ZebakManager.class);
                 }
-                zebakManager.run();
+                zebakManager.run(raidState,isPaused);
             }
         }
     }
