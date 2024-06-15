@@ -1,6 +1,5 @@
 package OzonePlugins.components.zebak;
 
-import lombok.Builder;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import net.runelite.api.Client;
@@ -9,13 +8,14 @@ import net.runelite.api.coords.WorldPoint;
 
 @RequiredArgsConstructor
 public enum TileOffsets {
-    START(-3,0),
-    GATE(-5,0),
-    WATER_CONTAINER(-16,+6),
-    FIRST_TILE(-10,+12),
-    FIRST_WATERFALL(-6,+23),
-    PALM_TREE(-18,+1),
-    SECOND_WATERFALL(-23,+24)
+    START(-3,1),
+    GATE(-4,1),
+    WATER_CONTAINER(-16, 7),
+    FIRST_TILE(-10,13),
+    FIRST_WATERFALL(-10,25),
+    PALM_TREE(0,0),
+    SECOND_TILE(-23,13),
+    SECOND_WATERFALL(-23,25)
     ;
 
     private final int xOffset;
@@ -35,7 +35,7 @@ public enum TileOffsets {
     public static void setStart(LocalPoint start, Client client){
         for (TileOffsets val : TileOffsets.values())
         {
-            LocalPoint local = new LocalPoint(start.getX() + val.getXOffset(), start.getY() + val.getYOffset(), -1);
+            LocalPoint local = new LocalPoint(start.getX() - 192 + val.getXOffset(), start.getY() + val.getYOffset(), -1);
             val.world = WorldPoint.fromLocal(client,local);
         }
     }

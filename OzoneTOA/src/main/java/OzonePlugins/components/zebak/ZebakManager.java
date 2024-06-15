@@ -5,20 +5,21 @@ import OzonePlugins.data.RaidState;
 import OzonePlugins.modules.PluginLifecycleComponent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.Client;
-import net.runelite.api.TileItem;
+import net.runelite.api.*;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.events.AnimationChanged;
+import net.runelite.api.events.NpcSpawned;
 import net.runelite.client.eventbus.EventBus;
-import net.unethicalite.api.entities.Players;
-import net.unethicalite.api.entities.TileItems;
-import net.unethicalite.api.entities.TileObjects;
+import net.runelite.client.eventbus.Subscribe;
+import net.unethicalite.api.entities.*;
 import net.unethicalite.api.items.Inventory;
 import net.unethicalite.api.movement.Movement;
 
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import java.util.Objects;
 
 
 @Singleton
@@ -28,10 +29,12 @@ public class ZebakManager implements PluginLifecycleComponent {
 
     @Inject
     private Client client;
-    private EventBus eventBus;
+    private final EventBus eventBus;
     private CrondisState crondisState;
 
     private LocalPoint start;
+
+    private int ticks = 0;
 
 
     @Override
@@ -45,21 +48,26 @@ public class ZebakManager implements PluginLifecycleComponent {
     @Override
     public void startUp()
     {
+        eventBus.register(this);
         this.crondisState = CrondisState.START;
-        this.start = Players.getLocal().getLocalLocation();
+        this.start = TileObjects.getNearest("Exit").getLocalLocation();
         TileOffsets.setStart(start,client);
-        //eventBus.register(this);
     }
 
     @Override
     public void shutDown()
     {
         this.start = null;
-        //eventBus.unregister(this);
+        eventBus.unregister(this);
     }
 
     public void run(RaidState raidState, boolean isPaused)
     {
+        if(ticks > 0)
+        {
+            ticks--;
+            return;
+        }
         if(raidState.getCurrentRoom() == RaidRoom.CRONDIS)
         {
             if(crondisState == null){
@@ -68,16 +76,21 @@ public class ZebakManager implements PluginLifecycleComponent {
             }
             if(start == null)
             {
-                this.start = Players.getLocal().getLocalLocation();
-                TileOffsets.setStart(start,client);
+                TileObject exit = TileObjects.getNearest("Exit");
+                if (exit != null)
+                {
+                    this.start = TileObjects.getNearest("Exit").getLocalLocation();
+                    TileOffsets.setStart(start,client);
+                }
+                else{
+                    System.out.println("palm is null");
+                    System.out.println(TileObjects.getNearest("Exit").getLocalLocation());
+                    return;
+                }
             }
             if(isPaused){
                 System.out.println(crondisState.getName());
-                TileItem item = TileItems.getFirstAt(TileOffsets.WATER_CONTAINER.getWorld(),"Water container");
-                if (item != null)
-                {
-                    System.out.println("water container:" + item.getName());
-                }
+                System.out.println(TileObjects.getNearest("Exit").getLocalLocation());
                 return;
             }
             switch (crondisState){
@@ -87,40 +100,136 @@ public class ZebakManager implements PluginLifecycleComponent {
                         break;
                     }
                     if (isOnTile(TileOffsets.START.getWorld()) ) {
-                        TileObjects.getNearest(TileOffsets.START.getWorld(), "Barrier").interact("Quick-Pass");
-                        break;
-                    }
-                    if(isOnTile(TileOffsets.GATE.getWorld()))
-                    {
-                        TileItems.getFirstAt(TileOffsets.WATER_CONTAINER.getWorld(),"Water container").interact("Take");
+                        TileObjects.getFirstAt(TileOffsets.GATE.getWorld(), "Barrier").interact("Quick-Pass");
                         this.crondisState = CrondisState.WATER_CONTAINER;
+                        break;
                     }
                     break;
                 }
                 case WATER_CONTAINER: {
-                    if(!Players.getLocal().isMoving() && !Inventory.contains("Water container"))
+                    if( Players.getLocal().distanceTo(TileOffsets.WATER_CONTAINER.getWorld()) > 7 && !Inventory.contains("Water container"))
                     {
                         TileItems.getFirstAt(TileOffsets.WATER_CONTAINER.getWorld(),"Water container").interact("Take");
                         break;
                     }
                     if(Inventory.contains("Water container")){
-                        Movement.walkTo(TileOffsets.FIRST_TILE.getWorld());
+                        Movement.walk(TileOffsets.FIRST_TILE.getWorld());
                         this.crondisState = CrondisState.FIRST_TILE;
+                        ticks = 2;
                         break;
                     }
+                    break;
                 }
                 case FIRST_TILE: {
-                    if (Players.getLocal().distanceTo(TileOffsets.FIRST_TILE.getWorld()) > 1) {
-                        break;
-                    } else {
-                        Inventory.getFirst("Water container").useOn(TileObjects.getFirstAt(TileOffsets.FIRST_WATERFALL.getWorld(), "Waterfall"));
+                    if (Players.getLocal().distanceTo(TileOffsets.FIRST_TILE.getWorld()) <= 0) {
+                        TileObject waterfall = TileObjects.getNearest(TileOffsets.FIRST_WATERFALL.getWorld(),"Waterfall");
+                        if(waterfall == null){
+                            System.out.println("waterfall is null");
+                            break;
+                        }
+                        Inventory.getFirst("Water container").useOn(waterfall);
                         this.crondisState = CrondisState.WATERFALL;
+                    }
+                    break;
+                }
+                case WATERFALL: {
+                    if(Players.getLocal().getAnimation() == 827)
+                    {
+                        this.crondisState = CrondisState.FIRST_PALM_RUN;
+                        Movement.walk(TileOffsets.FIRST_TILE.getWorld());
+                        break;
+                    }
+                    break;
+                }
+                case FIRST_PALM_RUN: {
+                    if(!Players.getLocal().isMoving()){
+                        Movement.walk(TileOffsets.FIRST_TILE.getWorld());
+                        ticks = 4;
+                        break;
+                    }
+                    if(!Players.getLocal().isInteracting())
+                    {
+                        NPC tree = NPCs.getNearest("Palm of Resourcefulness");
+                        if(tree == null)
+                        {
+                            System.out.println("tree is null");
+                            break;
+                        }
+                        Inventory.getFirst("Water container").useOn(tree);
+                        ticks = 2;
+                        this.crondisState = CrondisState.FIRST_PALM;
+                        break;
+                    }
+                    break;
+                }
+                case FIRST_PALM: {
+                    if(Players.getLocal().getAnimation() == 827)
+                    {
+                        this.crondisState = CrondisState.SECOND_TILE;
+                        Movement.walk(TileOffsets.SECOND_TILE.getWorld());
+                        break;
+                    }
+                    break;
+                }
+                case SECOND_TILE: {
+                    if(!Players.getLocal().isMoving())
+                    {
+                        Movement.walk(TileOffsets.SECOND_TILE.getWorld());
+                        ticks = 4;
+                        break;
+                    }
+                    if(!Players.getLocal().isInteracting()) {
+                        TileObject waterfall = TileObjects.getNearest(TileOffsets.SECOND_WATERFALL.getWorld(), "Waterfall");
+                        if (waterfall == null) {
+                            System.out.println("waterfall null");
+                            break;
+                        }
+                        Inventory.getFirst("Water container").useOn(waterfall);
+                        ticks = 4;
+                        this.crondisState = CrondisState.SECOND_WATERFALL;
                         break;
                     }
                 }
-                case WATERFALL: {
-                    System.out.println("first palm");
+                case SECOND_WATERFALL: {
+                    if(Players.getLocal().getAnimation() == 827) {
+                        this.crondisState = CrondisState.SECOND_PALM_RUN;
+                        Movement.walk(TileOffsets.SECOND_TILE.getWorld());
+                        break;
+                    }
+                    break;
                 }
+                case SECOND_PALM_RUN: {
+                    if(!Players.getLocal().isMoving()) {
+                        Movement.walk(TileOffsets.SECOND_TILE.getWorld());
+                        ticks = 4;
+                        break;
+                    }
+                    if(!Players.getLocal().isInteracting())
+                    {
+                        NPC tree = NPCs.getNearest("Palm of Resourcefulness");
+                        if(tree == null)
+                        {
+                            System.out.println("tree is null");
+                            break;
+                        }
+                        Inventory.getFirst("Water container").useOn(tree);
+                        ticks = 4;
+                        this.crondisState = CrondisState.SECOND_PALM;
+                        break;
+                    }
+                }
+                case SECOND_PALM:{
+                    if(Players.getLocal().getAnimation() == 827)
+                    {
+                        this.crondisState = CrondisState.END;
+                        break;
+                    }
+                    break;
+                }
+                case END:{
+                    System.out.println("done");
+                }
+
                 default: break;
 
             }
@@ -129,5 +238,18 @@ public class ZebakManager implements PluginLifecycleComponent {
 
     private boolean isOnTile(WorldPoint tile) {
         return Players.getLocal().distanceTo(tile) <= 0;
+    }
+
+    @Subscribe
+    public void onAnimationChanged(AnimationChanged animationChanged)
+    {
+        if(Objects.equals(animationChanged.getActor().getName(), Players.getLocal().getName()))
+        {
+            System.out.println(animationChanged.getActor().getAnimation());
+            if(animationChanged.getActor().getAnimation() == 827)
+            {
+                System.out.println("burying animation");
+            }
+        }
     }
 }

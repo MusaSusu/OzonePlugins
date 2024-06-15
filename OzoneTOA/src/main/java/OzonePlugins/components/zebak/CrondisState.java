@@ -10,13 +10,16 @@ import lombok.RequiredArgsConstructor;
 @Getter
 public enum CrondisState {
     START("start"),
-    START_TILE("start tile"),
     WATER_CONTAINER ("water container"),
     FIRST_TILE("first tile"),
     WATERFALL("water fall"),
+    FIRST_PALM_RUN("first run"),
     FIRST_PALM("first palm"),
+    SECOND_TILE("second tile"),
     SECOND_WATERFALL("second waterfall"),
+    SECOND_PALM_RUN("second run"),
     SECOND_PALM("second palm"),
+    END("END")
     ;
 
     private final String name;

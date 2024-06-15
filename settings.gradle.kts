@@ -1,5 +1,6 @@
 rootProject.name = "OzonePlugins"
 
+/*
 include(":Cooking")
 include(":OzoneWintertodt")
 include(":OzoneCannon")
@@ -11,7 +12,8 @@ include("unethical-zulrah")
 include("OzoneZulrah")
 include("KyleeZulrah")
 include("OzoneTesting")
-include("OzoneUtils")
+ */
+include("unethical-zulrah")
 include("OzoneTOA")
 
 for (project in rootProject.children) {
