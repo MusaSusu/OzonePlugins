@@ -12,8 +12,8 @@ include("unethical-zulrah")
 include("OzoneZulrah")
 include("KyleeZulrah")
 include("OzoneTesting")
- */
 include("unethical-zulrah")
+ */
 include("OzoneTOA")
 
 for (project in rootProject.children) {

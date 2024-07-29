@@ -112,6 +112,8 @@ public class ComponentManager
 		catch (Exception e)
 		{
 			log.error("Failed to start ToA plugin component [{}]", component.getClass().getName(), e);
+			System.out.println("Failed to start ToA plugin component:" + component.getClass().getName() );
+
 		}
 	}
 
@@ -136,6 +138,7 @@ public class ComponentManager
 		catch (Exception e)
 		{
 			log.error("Failed to cleanly shut down ToA plugin component [{}]", component.getClass().getName());
+			System.out.println("Failed to cleanly shut down ToA plugin component" + component.getClass().getName());
 		}
 		finally
 		{

@@ -1,6 +1,7 @@
 package OzonePlugins;
 
 
+import OzonePlugins.components.kephri.ScabarasManager;
 import OzonePlugins.components.zebak.ZebakManager;
 import OzonePlugins.data.*;
 import OzonePlugins.modules.ComponentManager;
@@ -8,8 +9,6 @@ import OzonePlugins.modules.TOAModule;
 import com.google.inject.Binder;
 import com.google.inject.Provides;
 import net.runelite.api.Client;
-import net.runelite.api.coords.LocalPoint;
-import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.GameTick;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
@@ -17,7 +16,6 @@ import net.runelite.client.input.KeyManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.util.HotkeyListener;
-import net.unethicalite.api.entities.Players;
 import org.pf4j.Extension;
 
 import javax.inject.Inject;
@@ -44,6 +42,7 @@ public class OzoneTOAPlugin extends Plugin {
     private ComponentManager componentManager = null;
 
     private ZebakManager zebakManager = null;
+    private ScabarasManager scabarasManager = null;
 
     private boolean isPaused = true;
     private RaidState raidState;
@@ -107,6 +106,14 @@ public class OzoneTOAPlugin extends Plugin {
                 }
                 zebakManager.run(raidState,isPaused);
             }
+            else if(raidState.getCurrentRoom() == RaidRoom.SCABARAS)
+            {
+                if (scabarasManager == null)
+                {
+                    this.scabarasManager = injector.getInstance(ScabarasManager.class);
+                }
+                scabarasManager.run(raidState,isPaused);
+            }
         }
     }
 
@@ -114,6 +121,7 @@ public class OzoneTOAPlugin extends Plugin {
     private void onRaidStateChanged(RaidStateChanged raidState)
     {
         this.raidState = raidState.getNewState();
+        System.out.println("Raid Stata Change: + " + raidState.getNewState());
     }
 
     private final HotkeyListener scriptControl = new HotkeyListener(() -> config.getHotkey())

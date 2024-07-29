@@ -4,18 +4,15 @@ import OzonePlugins.data.RaidRoom;
 import OzonePlugins.data.RaidState;
 import OzonePlugins.modules.PluginLifecycleComponent;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.AnimationChanged;
-import net.runelite.api.events.NpcSpawned;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.unethicalite.api.entities.*;
 import net.unethicalite.api.items.Inventory;
 import net.unethicalite.api.movement.Movement;
-
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -24,7 +21,6 @@ import java.util.Objects;
 
 @Singleton
 @RequiredArgsConstructor(onConstructor_ = @Inject)
-@Slf4j
 public class ZebakManager implements PluginLifecycleComponent {
 
     @Inject
@@ -229,9 +225,7 @@ public class ZebakManager implements PluginLifecycleComponent {
                 case END:{
                     System.out.println("done");
                 }
-
                 default: break;
-
             }
         }
     }

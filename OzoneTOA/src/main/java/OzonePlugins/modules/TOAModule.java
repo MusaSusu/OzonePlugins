@@ -1,6 +1,9 @@
 package OzonePlugins.modules;
 
 import OzonePlugins.components.invocations.InvocationPresetsManager;
+import OzonePlugins.components.kephri.AdditionPuzzleSolver;
+import OzonePlugins.components.kephri.LayoutConfigurer;
+import OzonePlugins.components.kephri.ScabarasManager;
 import OzonePlugins.components.zebak.ZebakManager;
 import com.google.inject.AbstractModule;
 import com.google.inject.multibindings.Multibinder;
@@ -14,5 +17,9 @@ public class TOAModule extends AbstractModule {
         lifecycleComponents.addBinding().to(RaidStateTracker.class);
         lifecycleComponents.addBinding().to(InvocationPresetsManager.class);
         lifecycleComponents.addBinding().to(ZebakManager.class);
+        lifecycleComponents.addBinding().to(ScabarasManager.class);
+        lifecycleComponents.addBinding().to(AdditionPuzzleSolver.class);
+        lifecycleComponents.addBinding().to(LayoutConfigurer.class);
+
     }
 }
