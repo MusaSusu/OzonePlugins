@@ -7,16 +7,13 @@ import lombok.RequiredArgsConstructor;
 import net.runelite.api.*;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.api.events.AnimationChanged;
 import net.runelite.client.eventbus.EventBus;
-import net.runelite.client.eventbus.Subscribe;
 import net.unethicalite.api.entities.*;
 import net.unethicalite.api.items.Inventory;
 import net.unethicalite.api.movement.Movement;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import java.util.Objects;
 
 
 @Singleton
@@ -80,12 +77,12 @@ public class ZebakManager implements PluginLifecycleComponent {
                 }
                 else{
                     System.out.println("palm is null");
-                    System.out.println(TileObjects.getNearest("Exit").getLocalLocation());
+                    System.out.println(TileObjects.getNearest("Exit").getLocalLocation());//testing
                     return;
                 }
             }
             if(isPaused){
-                System.out.println(crondisState.getName());
+                System.out.println(crondisState.getName()); //testing
                 System.out.println(TileObjects.getNearest("Exit").getLocalLocation());
                 return;
             }
@@ -223,7 +220,8 @@ public class ZebakManager implements PluginLifecycleComponent {
                     break;
                 }
                 case END:{
-                    System.out.println("done");
+                    // TODO: if water is less than 100% then need to continue
+                    System.out.println("done"); //testing
                 }
                 default: break;
             }
@@ -232,18 +230,5 @@ public class ZebakManager implements PluginLifecycleComponent {
 
     private boolean isOnTile(WorldPoint tile) {
         return Players.getLocal().distanceTo(tile) <= 0;
-    }
-
-    @Subscribe
-    public void onAnimationChanged(AnimationChanged animationChanged)
-    {
-        if(Objects.equals(animationChanged.getActor().getName(), Players.getLocal().getName()))
-        {
-            System.out.println(animationChanged.getActor().getAnimation());
-            if(animationChanged.getActor().getAnimation() == 827)
-            {
-                System.out.println("burying animation");
-            }
-        }
     }
 }

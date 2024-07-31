@@ -1,4 +1,4 @@
-package OzonePlugins.components.kephri;
+package OzonePlugins.components.kephri.ScabarasPuzzle;
 
 import OzonePlugins.data.RaidRoom;
 import OzonePlugins.data.RaidState;
@@ -13,8 +13,6 @@ import net.unethicalite.api.entities.TileObjects;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
-
-import java.util.Set;
 
 @Singleton
 @RequiredArgsConstructor(onConstructor_ = @Inject)

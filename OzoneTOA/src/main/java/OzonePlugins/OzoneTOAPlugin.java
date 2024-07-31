@@ -1,15 +1,20 @@
 package OzonePlugins;
 
 
-import OzonePlugins.components.kephri.ScabarasManager;
+import OzonePlugins.components.kephri.ScabarasPuzzle.ScabarasManager;
 import OzonePlugins.components.zebak.ZebakManager;
 import OzonePlugins.data.*;
 import OzonePlugins.modules.ComponentManager;
 import OzonePlugins.modules.TOAModule;
 import com.google.inject.Binder;
 import com.google.inject.Provides;
+import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.events.GameTick;
+import net.runelite.client.chat.ChatColorType;
+import net.runelite.client.chat.ChatMessageBuilder;
+import net.runelite.client.chat.ChatMessageManager;
+import net.runelite.client.chat.QueuedMessage;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.input.KeyManager;
@@ -38,6 +43,8 @@ public class OzoneTOAPlugin extends Plugin {
     private OzoneTOAConfig config;
     @Inject
     private KeyManager keyManager;
+    @Inject
+    private ChatMessageManager chatMessageManager;
 
     private ComponentManager componentManager = null;
 
@@ -130,6 +137,15 @@ public class OzoneTOAPlugin extends Plugin {
         public void hotkeyPressed()
         {
             isPaused = !isPaused;
+            final ChatMessageBuilder message = new ChatMessageBuilder()
+                    .append(ChatColorType.HIGHLIGHT)
+                    .append("Game is" + isPaused)
+                    .append(ChatColorType.NORMAL);
+
+            chatMessageManager.queue(QueuedMessage.builder()
+                    .type(ChatMessageType.ITEM_EXAMINE)
+                    .runeLiteFormattedMessage(message.build())
+                    .build());
         }
     };
 

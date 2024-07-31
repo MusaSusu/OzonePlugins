@@ -107,12 +107,12 @@ public class ComponentManager
 			component.startUp();
 			gameEventManager.simulateGameEvents(component);
 			states.put(component, true);
-			System.out.println("Enabling ToA plugin component:" + component.getClass().getName() );
+			System.out.println("Enabling ToA plugin component:" + component.getClass().getName() ); //testing
 		}
 		catch (Exception e)
 		{
 			log.error("Failed to start ToA plugin component [{}]", component.getClass().getName(), e);
-			System.out.println("Failed to start ToA plugin component:" + component.getClass().getName() );
+			System.out.println("Failed to start ToA plugin component:" + component.getClass().getName() ); //testing
 
 		}
 	}
@@ -132,12 +132,12 @@ public class ComponentManager
 		try
 		{
 			component.shutDown();
-			System.out.println("Disabling ToA plugin component:" + component.getClass().getName() );
+			System.out.println("Disabling ToA plugin component:" + component.getClass().getName() ); //testing
 
 		}
 		catch (Exception e)
 		{
-			log.error("Failed to cleanly shut down ToA plugin component [{}]", component.getClass().getName());
+			log.error("Failed to cleanly shut down ToA plugin component [{}]", component.getClass().getName()); //testing
 			System.out.println("Failed to cleanly shut down ToA plugin component" + component.getClass().getName());
 		}
 		finally

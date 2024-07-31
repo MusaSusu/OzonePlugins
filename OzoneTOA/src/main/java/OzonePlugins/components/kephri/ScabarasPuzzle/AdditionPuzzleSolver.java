@@ -1,4 +1,4 @@
-package OzonePlugins.components.kephri;
+package OzonePlugins.components.kephri.ScabarasPuzzle;
 
 
 import OzonePlugins.data.RaidRoom;

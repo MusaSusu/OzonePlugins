@@ -1,9 +1,9 @@
 package OzonePlugins.modules;
 
 import OzonePlugins.components.invocations.InvocationPresetsManager;
-import OzonePlugins.components.kephri.AdditionPuzzleSolver;
-import OzonePlugins.components.kephri.LayoutConfigurer;
-import OzonePlugins.components.kephri.ScabarasManager;
+import OzonePlugins.components.kephri.ScabarasPuzzle.AdditionPuzzleSolver;
+import OzonePlugins.components.kephri.ScabarasPuzzle.LayoutConfigurer;
+import OzonePlugins.components.kephri.ScabarasPuzzle.ScabarasManager;
 import OzonePlugins.components.zebak.ZebakManager;
 import com.google.inject.AbstractModule;
 import com.google.inject.multibindings.Multibinder;

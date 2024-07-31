@@ -1,4 +1,4 @@
-package OzonePlugins.components.kephri;
+package OzonePlugins.components.kephri.ScabarasPuzzle;
 
 import OzonePlugins.data.RaidRoom;
 import OzonePlugins.data.RaidState;
@@ -15,7 +15,6 @@ import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.GameObjectSpawned;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
-import net.unethicalite.api.coords.ScenePoint;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
