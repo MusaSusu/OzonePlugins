@@ -19,6 +19,7 @@ import net.runelite.api.events.GameTick;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.util.Text;
+import net.unethicalite.api.entities.TileObjects;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -101,6 +102,7 @@ public class AdditionPuzzleSolver implements PluginLifecycleComponent
 	private boolean solved;
 	private Set<Integer> tileStates;
 	private int targetNumber;
+	private boolean puzzleComplete;
 
 	@Getter
 	private Set<LocalPoint> flips = Collections.emptySet();
@@ -240,5 +242,28 @@ public class AdditionPuzzleSolver implements PluginLifecycleComponent
 		return remaining.stream()
 			.map(i -> LocalPoint.fromScene(topLeft.getX() + i % 5, topLeft.getY() - i / 5))
 			.collect(Collectors.toSet());
+	}
+
+	public void run()
+	{
+		if(!puzzleComplete)
+		{
+			if(this.targetNumber < 0)
+			{
+				if(!client.getLocalPlayer().isMoving())
+				{
+					TileObjects.getNearest(ObjectID.ANCIENT_TABLET).interact(0);
+					return;
+				}
+				return;
+			}
+		}
+	}
+
+	private void findOptimalWalk()
+	{
+		//find where to click
+		//find distance for time to sleep
+
 	}
 }

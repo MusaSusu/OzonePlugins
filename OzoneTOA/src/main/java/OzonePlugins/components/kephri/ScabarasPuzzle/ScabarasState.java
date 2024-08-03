@@ -10,6 +10,10 @@ import lombok.RequiredArgsConstructor;
 public enum ScabarasState {
 
     START("Start"),
+    ADDITION_PUZZLE("Addition Puzzle"),
+    SEQUENCE_PUZZLE("Sequence Puzzle"),
+    LIGHT_PUZZLE("Light Puzzle"),
+    MATCHING_PUZZLE("Matching Puzzle"),
     END("End")
         ;
 
