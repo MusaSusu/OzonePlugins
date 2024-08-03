@@ -8,7 +8,9 @@ import net.runelite.api.Client;
 import net.runelite.api.ObjectID;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.events.ChatMessage;
 import net.runelite.client.eventbus.EventBus;
+import net.runelite.client.eventbus.Subscribe;
 import net.unethicalite.api.entities.TileObjects;
 
 import javax.inject.Inject;
@@ -26,9 +28,14 @@ public class ScabarasManager implements PluginLifecycleComponent {
     private boolean isFirstPuzzle = true;
 
     @Inject
+    private LayoutConfigurer layoutConfigurer;
+    @Inject
     private AdditionPuzzleSolver additionPuzzleSolver;
     @Inject
-    private LayoutConfigurer layoutConfigurer;
+    private LightPuzzleSolver lightPuzzleSolver;
+    @Inject
+    private SequencePuzzleSolver sequencePuzzleSolver;
+
 
     @Override
     public boolean isEnabled(RaidState raidState) {
@@ -50,6 +57,10 @@ public class ScabarasManager implements PluginLifecycleComponent {
         eventBus.unregister(this);
     }
 
+    private void reset(){
+        this.scabarasState = ScabarasState.START;
+    }
+
     public void run(RaidState raidState, boolean isPaused) {
         gameTicks++;
         if(isPaused)
@@ -57,7 +68,6 @@ public class ScabarasManager implements PluginLifecycleComponent {
             return;
         }
         else{
-
             switch (scabarasState) {
                 case START: {
                     LocalPoint flame = layoutConfigurer.getFlameLocation();
@@ -66,16 +76,17 @@ public class ScabarasManager implements PluginLifecycleComponent {
                     }
                     else {
                         LocalPoint destination = new LocalPoint(flame.getX() + 128, flame.getY());
-                        if(!client.getLocalPlayer().isMoving() && client.getLocalPlayer().getLocalLocation() != destination)
+                        if(client.getLocalPlayer().getLocalLocation().distanceTo(destination) == 0)
+                        {
+                            System.out.println("gameTick on arrive: " +  gameTicks);
+                            this.scabarasState = layoutConfigurer.getCurrentPuzzle(isFirstPuzzle);
+                            break;
+                        }
+                        if(!client.getLocalPlayer().isMoving())
                         {
                             TileObjects.getNearest(WorldPoint.fromLocal(client,flame), ObjectID.BARRIER_45135).interact("Quick-Pass");
                             System.out.println("gameTick on click: " +  gameTicks);
                             break;
-                        }
-                        if(client.getLocalPlayer().getLocalLocation() == destination)
-                        {
-                            System.out.println("gameTick on arrive: " +  gameTicks);
-                            this.scabarasState = layoutConfigurer.getCurrentPuzzle(isFirstPuzzle);
                         }
                         break;
                     }
@@ -84,8 +95,11 @@ public class ScabarasManager implements PluginLifecycleComponent {
                     additionPuzzleSolver.run();
                     break;
                 case LIGHT_PUZZLE:
+                    lightPuzzleSolver.run();
+                    break;
                 case SEQUENCE_PUZZLE:
-
+                    sequencePuzzleSolver.run();
+                    break;
                 case MATCHING_PUZZLE:
 
                 case END: {
@@ -103,6 +117,15 @@ public class ScabarasManager implements PluginLifecycleComponent {
             return false;
         }
         return true;
+    }
+
+    @Subscribe
+    public void onChatMessage(ChatMessage e)
+    {
+        if (e.getMessage().startsWith("Your party failed to complete the challenge"))
+        {
+            reset();
+        }
     }
 
 }

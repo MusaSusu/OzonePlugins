@@ -13,6 +13,7 @@ public enum ScabarasState {
     ADDITION_PUZZLE("Addition Puzzle"),
     SEQUENCE_PUZZLE("Sequence Puzzle"),
     LIGHT_PUZZLE("Light Puzzle"),
+    OBELISK_PUZZLE("Obelisk Puzzle"),
     MATCHING_PUZZLE("Matching Puzzle"),
     END("End")
         ;

@@ -248,7 +248,7 @@ public class AdditionPuzzleSolver implements PluginLifecycleComponent
 	{
 		if(!puzzleComplete)
 		{
-			if(this.targetNumber < 0)
+			if(this.targetNumber < 20)
 			{
 				if(!client.getLocalPlayer().isMoving())
 				{

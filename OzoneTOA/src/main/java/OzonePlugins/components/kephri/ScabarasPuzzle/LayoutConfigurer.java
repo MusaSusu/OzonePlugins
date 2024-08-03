@@ -16,9 +16,12 @@ import net.runelite.api.events.GameObjectSpawned;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 
+import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 @Singleton
 @RequiredArgsConstructor(onConstructor_ = @Inject)
@@ -40,6 +43,7 @@ public class LayoutConfigurer implements PluginLifecycleComponent {
         TOP_RIGHT,
         BOTTOM_RIGHT,
         BOTTOM_LEFT,
+        UNKNOWN,
         ;
     }
     @Getter
@@ -54,15 +58,19 @@ public class LayoutConfigurer implements PluginLifecycleComponent {
             new Point(53, 45), State.HIGHLIGHT_LOWER  // bottom right
     );
 
+    private static final Map<Point, QuadrantState> OBELISK_STATES = ImmutableMap.of(
+            new Point(36, 57), QuadrantState.TOP_LEFT, // top left
+            new Point(53, 57), QuadrantState.TOP_RIGHT, // top right
+            new Point(36, 45), QuadrantState.BOTTOM_LEFT, // bottom left
+            new Point(53, 45), QuadrantState.BOTTOM_RIGHT  // bottom right
+    );
+
     private static final int FLAME_ID = ObjectID.BARRIER_45135;
     private static final Point FLAME_UPPER_HALF_LOC = new Point(28, 54);
     private static final Point FLAME_LOWER_HALF_LOC = new Point(28, 42);
 
     private static final int ANCIENT_BUTTON_ID = ObjectID.ANCIENT_BUTTON;
     private static final int ANCIENT_TABLET_ID = ObjectID.ANCIENT_TABLET;
-    private static Point ANCIENT_BUTTON_LOC, ANCIENT_TABLET_LOC;
-    private static QuadrantState ANCIENT_BUTTON_STATE, ANCIENT_TABLET_STATE;
-
 
     private static final Map<Point, QuadrantState> BUTTON_STATES = ImmutableMap.of(
             new Point(34,44), QuadrantState.BOTTOM_LEFT,
@@ -70,6 +78,16 @@ public class LayoutConfigurer implements PluginLifecycleComponent {
             new Point(51,44), QuadrantState.BOTTOM_RIGHT,
             new Point(51,56), QuadrantState.TOP_RIGHT
     );
+
+    private static Map<QuadrantState,ScabarasState> layout;
+
+    static{
+        layout = new HashMap<>();
+        layout.put(QuadrantState.BOTTOM_LEFT,null);
+        layout.put(QuadrantState.BOTTOM_RIGHT,null);
+        layout.put(QuadrantState.TOP_LEFT,null);
+        layout.put(QuadrantState.TOP_RIGHT,null);
+    }
 
     private GameObject flameLower, flameUpper;
 
@@ -98,6 +116,10 @@ public class LayoutConfigurer implements PluginLifecycleComponent {
         flameLower = null;
         flameUpper = null;
         state = State.UNKNOWN;
+        layout.put(QuadrantState.BOTTOM_LEFT,null);
+        layout.put(QuadrantState.BOTTOM_RIGHT,null);
+        layout.put(QuadrantState.TOP_LEFT,null);
+        layout.put(QuadrantState.TOP_RIGHT,null);
     }
 
     @Subscribe
@@ -141,11 +163,19 @@ public class LayoutConfigurer implements PluginLifecycleComponent {
             return;
         }
 
-        State derivedState = QUADRANT_STATES.get(obj.getSceneMinLocation());
+        QuadrantState derivedState = OBELISK_STATES.get(obj.getSceneMinLocation());
         if (derivedState != null)
         {
             System.out.println("Determined that obelisk puzzle is avoided by" +  state);
-            state = derivedState;
+            if(derivedState == QuadrantState.BOTTOM_LEFT | derivedState == QuadrantState.TOP_RIGHT )
+            {
+                state = State.HIGHLIGHT_UPPER;
+            }
+            else
+            {
+                state = State.HIGHLIGHT_LOWER;
+            }
+            layout.put(derivedState,ScabarasState.OBELISK_PUZZLE);
         }
     }
 
@@ -158,8 +188,7 @@ public class LayoutConfigurer implements PluginLifecycleComponent {
         QuadrantState derivedState = BUTTON_STATES.get(obj.getSceneMinLocation());
         if(derivedState != null)
         {
-            ANCIENT_BUTTON_LOC = obj.getSceneMinLocation();
-            ANCIENT_BUTTON_STATE = derivedState;
+            layout.put(derivedState,ScabarasState.SEQUENCE_PUZZLE);
         }
     }
 
@@ -172,8 +201,7 @@ public class LayoutConfigurer implements PluginLifecycleComponent {
         QuadrantState derivedState = BUTTON_STATES.get(obj.getSceneMinLocation());
         if(derivedState != null)
         {
-            ANCIENT_TABLET_LOC = obj.getSceneMinLocation();
-            ANCIENT_TABLET_STATE = derivedState;
+            layout.put(derivedState,ScabarasState.ADDITION_PUZZLE);
         }
     }
 
@@ -190,35 +218,29 @@ public class LayoutConfigurer implements PluginLifecycleComponent {
 
     public ScabarasState getCurrentPuzzle(boolean isfirstPuzzle)
     {
+        ScabarasState room;
         if(isfirstPuzzle)
         {
-            if(ANCIENT_BUTTON_STATE == QuadrantState.TOP_LEFT)
+            if (state == State.HIGHLIGHT_UPPER)
             {
-                return ScabarasState.SEQUENCE_PUZZLE;
-            }
-            if(ANCIENT_TABLET_STATE == QuadrantState.TOP_LEFT)
-            {
-                return ScabarasState.ADDITION_PUZZLE;
+                room = layout.get(QuadrantState.TOP_LEFT);
             }
             else
             {
-                return ScabarasState.LIGHT_PUZZLE;
+                room = layout.get(QuadrantState.BOTTOM_LEFT);
             }
         }
         else
         {
-            if(ANCIENT_BUTTON_STATE == QuadrantState.BOTTOM_RIGHT)
+            if (state == State.HIGHLIGHT_UPPER)
             {
-                return ScabarasState.SEQUENCE_PUZZLE;
-            }
-            if(ANCIENT_TABLET_STATE == QuadrantState.BOTTOM_RIGHT)
-            {
-                return ScabarasState.ADDITION_PUZZLE;
+                room = layout.get(QuadrantState.BOTTOM_RIGHT);
             }
             else
             {
-                return ScabarasState.LIGHT_PUZZLE;
+                room = layout.get(QuadrantState.TOP_RIGHT);
             }
         }
+        return Objects.requireNonNullElse(room, ScabarasState.LIGHT_PUZZLE);
     }
 }
