@@ -25,6 +25,7 @@ public class ScabarasManager implements PluginLifecycleComponent {
 
     private ScabarasState scabarasState;
     private int gameTicks = 0;
+    private int delayTicks = 4;
     private boolean isFirstPuzzle = true;
 
     @Inject
@@ -65,6 +66,11 @@ public class ScabarasManager implements PluginLifecycleComponent {
         gameTicks++;
         if(isPaused)
         {
+            return;
+        }
+        if(delayTicks > 0)
+        {
+            delayTicks--;
             return;
         }
         else{

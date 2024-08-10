@@ -88,4 +88,14 @@ public interface OzoneTOAConfig extends Config {
     {
         return Keybind.NOT_SET;
     }
+
+    @ConfigItem(
+            keyName = "Test Hotkey",
+            name = "Test Hotkey",
+            description = "Set hotkey to test"
+    )
+    default Keybind getTestkey()
+    {
+        return Keybind.NOT_SET;
+    }
 }

@@ -10,6 +10,8 @@ import com.google.inject.Binder;
 import com.google.inject.Provides;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
+import net.runelite.api.coords.LocalPoint;
+import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.GameTick;
 import net.runelite.client.chat.ChatColorType;
 import net.runelite.client.chat.ChatMessageBuilder;
@@ -25,8 +27,7 @@ import org.pf4j.Extension;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Extension
@@ -80,6 +81,7 @@ public class OzoneTOAPlugin extends Plugin {
         GearTypes.setMeleePhaseGear(new GearSetup(meleeGearNames));
 
         keyManager.registerKeyListener(scriptControl);
+        keyManager.registerKeyListener(testingKey);
 
         if (componentManager == null)
         {
@@ -93,6 +95,8 @@ public class OzoneTOAPlugin extends Plugin {
     protected void shutDown()
     {
         keyManager.unregisterKeyListener(scriptControl);
+        keyManager.unregisterKeyListener(testingKey);
+
         componentManager.onPluginStop();
     }
 
@@ -146,6 +150,29 @@ public class OzoneTOAPlugin extends Plugin {
                     .type(ChatMessageType.ITEM_EXAMINE)
                     .runeLiteFormattedMessage(message.build())
                     .build());
+        }
+    };
+
+    private final HotkeyListener testingKey = new HotkeyListener(() -> config.getTestkey())
+    {
+        @Override
+        public void hotkeyPressed()
+        {
+            List<WorldPoint> path;
+            WorldPoint playerLoc = client.getLocalPlayer().getWorldLocation();
+            WorldPoint dest = new WorldPoint(playerLoc.getX() + 3, playerLoc.getY() + 2, playerLoc.getPlane());
+            path = playerLoc.pathTo(client,dest);
+            System.out.println("plane = " + playerLoc.getPlane());
+            System.out.println(path);
+            WorldPoint start  = playerLoc;
+            for (WorldPoint p : path)
+            {
+                System.out.println(start.distanceTo(p));
+                start = p;
+            }
+            dest = new WorldPoint(playerLoc.getX() + 6, playerLoc.getY(),playerLoc.getPlane());
+            path = playerLoc.pathTo(client,dest);
+            System.out.println(path);
         }
     };
 

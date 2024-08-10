@@ -108,6 +108,7 @@ public class LayoutConfigurer implements PluginLifecycleComponent {
 
     @Override
     public void shutDown() {
+        reset();
         eventBus.unregister(this);
     }
 
@@ -166,7 +167,6 @@ public class LayoutConfigurer implements PluginLifecycleComponent {
         QuadrantState derivedState = OBELISK_STATES.get(obj.getSceneMinLocation());
         if (derivedState != null)
         {
-            System.out.println("Determined that obelisk puzzle is avoided by" +  state);
             if(derivedState == QuadrantState.BOTTOM_LEFT | derivedState == QuadrantState.TOP_RIGHT )
             {
                 state = State.HIGHLIGHT_UPPER;
