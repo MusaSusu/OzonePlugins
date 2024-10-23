@@ -193,7 +193,7 @@ public class AdditionPuzzleSolver implements PluginLifecycleComponent
 
 		this.tileStates = readTileStates(sceneTiles, tl);
 		this.flips = findSolution(tl);
-		System.out.println(this.flips.size());
+		System.out.println(this.flips.size()); //debug
 	}
 
 	private Point findStartTile(Tile[][] sceneTiles)

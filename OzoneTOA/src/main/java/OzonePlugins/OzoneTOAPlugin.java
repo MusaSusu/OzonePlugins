@@ -11,6 +11,7 @@ import com.google.inject.Provides;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.coords.LocalPoint;
+import net.runelite.api.coords.WorldArea;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.GameTick;
 import net.runelite.client.chat.ChatColorType;
@@ -32,7 +33,7 @@ import java.util.stream.Collectors;
 
 @Extension
 @PluginDescriptor(
-        name = " Ozone TOA",
+        name = "<html> [<font color=#FF69B4>OZ</font>] " + "Ozone TOA",
         description = "Completes TOA",
         tags = {"Ozone","Combat"}
 )
@@ -46,6 +47,8 @@ public class OzoneTOAPlugin extends Plugin {
     private KeyManager keyManager;
     @Inject
     private ChatMessageManager chatMessageManager;
+    @Inject
+    private Utils util;
 
     private ComponentManager componentManager = null;
 
@@ -160,19 +163,33 @@ public class OzoneTOAPlugin extends Plugin {
         {
             List<WorldPoint> path;
             WorldPoint playerLoc = client.getLocalPlayer().getWorldLocation();
-            WorldPoint dest = new WorldPoint(playerLoc.getX() + 3, playerLoc.getY() + 2, playerLoc.getPlane());
+            WorldPoint dest = new WorldPoint(playerLoc.getX() + 100, playerLoc.getY() + 100, playerLoc.getPlane());
+            WorldPoint start = new WorldPoint(playerLoc.getX() + 50, playerLoc.getY() + 50, playerLoc.getPlane());
             path = playerLoc.pathTo(client,dest);
-            System.out.println("plane = " + playerLoc.getPlane());
-            System.out.println(path);
-            WorldPoint start  = playerLoc;
-            for (WorldPoint p : path)
-            {
-                System.out.println(start.distanceTo(p));
-                start = p;
-            }
-            dest = new WorldPoint(playerLoc.getX() + 6, playerLoc.getY(),playerLoc.getPlane());
-            path = playerLoc.pathTo(client,dest);
-            System.out.println(path);
+
+            WorldArea area = new WorldArea(new WorldPoint(0,0,0),10,10);
+            start = new WorldPoint(0,2,0);
+            dest = new WorldPoint(3,3,0);
+            HashSet<WorldPoint> blocked = new HashSet<>();
+            HashSet<WorldPoint> skipBlocked = new HashSet<>();
+            skipBlocked.add(new WorldPoint(0,2,0));
+            skipBlocked.add(new WorldPoint(1,1,0));
+            skipBlocked.add(new WorldPoint(1,3,0));
+            skipBlocked.add(new WorldPoint(2,2,0));
+            skipBlocked.add(new WorldPoint(3,1,0));
+            skipBlocked.add(new WorldPoint(3,3,0));
+
+            long startTime = System.nanoTime();
+
+            // Call your function here
+            path = util.createPath(start,dest,area,blocked,Collections.emptySet());
+
+            long endTime = System.nanoTime();
+            long duration = (endTime - startTime);  // Duration in nanoseconds
+
+            System.out.println("Time taken: " + duration / 1000000 + " milliseconds");
+            System.out.println("Path: " + path);
+
         }
     };
 

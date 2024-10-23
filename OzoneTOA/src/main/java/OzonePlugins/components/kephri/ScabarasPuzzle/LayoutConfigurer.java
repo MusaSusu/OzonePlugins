@@ -6,17 +6,15 @@ import OzonePlugins.modules.PluginLifecycleComponent;
 import com.google.common.collect.ImmutableMap;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import net.runelite.api.Client;
-import net.runelite.api.GameObject;
-import net.runelite.api.ObjectID;
-import net.runelite.api.Point;
+import net.runelite.api.*;
 import net.runelite.api.coords.LocalPoint;
+import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.GameObjectSpawned;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
+import net.unethicalite.api.entities.TileObjects;
 
-import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.util.HashMap;
@@ -68,6 +66,9 @@ public class LayoutConfigurer implements PluginLifecycleComponent {
     private static final int FLAME_ID = ObjectID.BARRIER_45135;
     private static final Point FLAME_UPPER_HALF_LOC = new Point(28, 54);
     private static final Point FLAME_LOWER_HALF_LOC = new Point(28, 42);
+
+    private static final Point PASSAGE_UPPER_HALF_LOC = new Point(44, 51);
+    private static final Point PASSAGE_LOWER_HALF_LOC = new Point(44, 45);
 
     private static final int ANCIENT_BUTTON_ID = ObjectID.ANCIENT_BUTTON;
     private static final int ANCIENT_TABLET_ID = ObjectID.ANCIENT_TABLET;
@@ -205,15 +206,41 @@ public class LayoutConfigurer implements PluginLifecycleComponent {
         }
     }
 
-    public LocalPoint getFlameLocation() {
+    public LocalPoint getFlameLocation()
+    {
 
-        if (state == State.HIGHLIGHT_UPPER) {
+        if (state == State.HIGHLIGHT_UPPER)
+        {
             return flameUpper.getLocalLocation();
         }
-        if(state == State.HIGHLIGHT_LOWER) {
+        if(state == State.HIGHLIGHT_LOWER)
+        {
             return flameLower.getLocalLocation();
         }
         return null;
+    }
+
+    public TileObject getPassageLocation()
+    {
+
+        TileObject passage;
+        if (state == State.HIGHLIGHT_UPPER)
+        {
+           passage = TileObjects.getFirstAt(WorldPoint.fromScene(client.getLocalPlayer().getWorldView(),PASSAGE_UPPER_HALF_LOC.getX(),PASSAGE_UPPER_HALF_LOC.getY(),0),"Passage");
+        }
+        else
+        {
+           passage = TileObjects.getFirstAt(WorldPoint.fromScene(client.getLocalPlayer().getWorldView(),PASSAGE_LOWER_HALF_LOC.getX(),PASSAGE_LOWER_HALF_LOC.getY(),0),"Passage");
+        }
+        if (passage != null)
+        {
+            return passage;
+        }
+        else
+        {
+            System.out.println("passage is null");
+            return null;
+        }
     }
 
     public ScabarasState getCurrentPuzzle(boolean isfirstPuzzle)

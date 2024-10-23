@@ -11,7 +11,9 @@ import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
+import net.unethicalite.api.entities.Entities;
 import net.unethicalite.api.entities.TileObjects;
+import net.unethicalite.api.movement.Movement;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -25,8 +27,8 @@ public class ScabarasManager implements PluginLifecycleComponent {
 
     private ScabarasState scabarasState;
     private int gameTicks = 0;
-    private int delayTicks = 4;
-    private boolean isFirstPuzzle = true;
+    private int delayTicks;
+    private boolean isFirstPuzzle;
 
     @Inject
     private LayoutConfigurer layoutConfigurer;
@@ -50,7 +52,7 @@ public class ScabarasManager implements PluginLifecycleComponent {
     @Override
     public void startUp() {
         eventBus.register(this);
-        this.scabarasState = ScabarasState.START;
+        reset();
     }
 
     @Override
@@ -60,6 +62,8 @@ public class ScabarasManager implements PluginLifecycleComponent {
 
     private void reset(){
         this.scabarasState = ScabarasState.START;
+        isFirstPuzzle = true;
+        delayTicks = 4;
     }
 
     public void run(RaidState raidState, boolean isPaused) {
@@ -73,14 +77,16 @@ public class ScabarasManager implements PluginLifecycleComponent {
             delayTicks--;
             return;
         }
-        else{
+        else {
             switch (scabarasState) {
                 case START: {
                     LocalPoint flame = layoutConfigurer.getFlameLocation();
-                    if (flame == null){
+                    if (flame == null)
+                    {
                         break;
                     }
-                    else {
+                    else
+                    {
                         LocalPoint destination = new LocalPoint(flame.getX() + 128, flame.getY());
                         if(client.getLocalPlayer().getLocalLocation().distanceTo(destination) == 0)
                         {
@@ -113,7 +119,6 @@ public class ScabarasManager implements PluginLifecycleComponent {
                 }
             }
         }
-        System.out.println(scabarasState.getName());
     }
 
     private boolean checkTaskComplete(LocalPoint destination)
@@ -123,6 +128,23 @@ public class ScabarasManager implements PluginLifecycleComponent {
             return false;
         }
         return true;
+    }
+
+    public void walkNextPuzzle()
+    {
+        if (isFirstPuzzle)
+        {
+            if(!client.getLocalPlayer().isMoving())
+            {
+                layoutConfigurer.getPassageLocation().interact("Crawl-through");
+                this.isFirstPuzzle = false;
+                this.scabarasState = layoutConfigurer.getCurrentPuzzle(isFirstPuzzle);
+            }
+        }
+        else
+        {
+            //walk to matching puzzle
+        }
     }
 
     @Subscribe
