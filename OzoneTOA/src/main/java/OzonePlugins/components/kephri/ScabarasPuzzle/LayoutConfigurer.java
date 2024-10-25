@@ -70,6 +70,7 @@ public class LayoutConfigurer implements PluginLifecycleComponent {
     private static final Point PASSAGE_UPPER_HALF_LOC = new Point(44, 51);
     private static final Point PASSAGE_LOWER_HALF_LOC = new Point(44, 45);
 
+    private static final Point PLATFORM_LOC = new Point(56,48);
     private static final int ANCIENT_BUTTON_ID = ObjectID.ANCIENT_BUTTON;
     private static final int ANCIENT_TABLET_ID = ObjectID.ANCIENT_TABLET;
 
@@ -269,5 +270,10 @@ public class LayoutConfigurer implements PluginLifecycleComponent {
             }
         }
         return Objects.requireNonNullElse(room, ScabarasState.LIGHT_PUZZLE);
+    }
+
+    public TileObject getPlatform()
+    {
+        return TileObjects.getFirstAt(WorldPoint.fromScene(client.getLocalPlayer().getWorldView(),PLATFORM_LOC.getX(),PLATFORM_LOC.getY(),0),"Platform");
     }
 }

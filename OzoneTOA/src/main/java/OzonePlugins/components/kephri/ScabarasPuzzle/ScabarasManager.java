@@ -143,6 +143,10 @@ public class ScabarasManager implements PluginLifecycleComponent {
         }
         else
         {
+            if(!client.getLocalPlayer().isMoving())
+            {
+                layoutConfigurer.getPlatform().interact(0);
+            }
             //walk to matching puzzle
         }
     }

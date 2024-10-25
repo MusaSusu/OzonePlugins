@@ -18,6 +18,7 @@ import net.runelite.api.events.GraphicsObjectCreated;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.unethicalite.api.entities.TileObjects;
+import net.unethicalite.api.movement.Movement;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -177,7 +178,15 @@ public class SequencePuzzleSolver implements PluginLifecycleComponent
 		if (completedTiles < 5 && points.size() == 5)
 		{
 			LocalPoint dest = getPoints().get(completedTiles);
-			gameTick = util.checkPath(WorldPoint.fromLocal(client,dest),puzzleTiles);
+			List<WorldPoint> path = util.createPath(client.getLocalPlayer().getWorldLocation(), WorldPoint.fromLocal(client,dest), worldArea, Collections.emptySet(), puzzleTiles);
+			if(path.isEmpty())
+			{
+				log.debug("Empty path. Unreachable dest");
+				return;
+			}
+			Movement.walk(path.get(0));
+			int distance = client.getLocalPlayer().getWorldLocation().distanceTo(path.get(0));
+			gameTick = (int) Math.ceil((double) distance); //TODO: more accurate gametick
 			return;
 		}
 		if(puzzleFinished)

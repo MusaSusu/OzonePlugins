@@ -42,7 +42,6 @@ public class LightPuzzleSolver implements PluginLifecycleComponent
 		new Point(53, 44),
 	};
 
-
 	private static final int[] LIGHTS_PUZZLE_XOR_ARRAY = {
 		0B01110101,
 		0B10111010,
@@ -60,19 +59,19 @@ public class LightPuzzleSolver implements PluginLifecycleComponent
 	private int gameTick;
 	private boolean solved;
 	private boolean completed;
-	private boolean initialized;
-	private boolean inPuzzleArea;
+	private boolean queueInitialized;
 	private int tileStates = -1; // bitmask northwest to southeast
 
 	private Point startTile;
 	private WorldPoint centerTile;
 	private WorldArea puzzleArea;
 
+	private List<WorldPoint> clickPoints = new ArrayList<>(8);
 
 	@Getter
 	private Set<WorldPoint> flips = Collections.emptySet();
 
-	private final HashSet<WorldPoint> puzzleTiles = new HashSet<>(8);
+	private HashSet<WorldPoint> puzzleTiles = new HashSet<>(8);
 
 	@Override
 	public boolean isEnabled(RaidState raidState)
@@ -87,8 +86,9 @@ public class LightPuzzleSolver implements PluginLifecycleComponent
 
 		solved = false;
 		completed = false;
-		initialized = false;
-		inPuzzleArea = false;
+		queueInitialized = false;
+		puzzleArea = null;
+		clickPoints.clear();
 		solve();
 	}
 
@@ -146,10 +146,7 @@ public class LightPuzzleSolver implements PluginLifecycleComponent
 		}
 
 		this.centerTile = new WorldPoint(startTile.getX() + 2, startTile.getY() - 2,0);
-		if(puzzleArea == null)
-		{
-			this.puzzleArea = new WorldArea(new WorldPoint(startTile.getX(),startTile.getY() - 4,0), new WorldPoint(startTile.getX() + 4, startTile.getY(),0));
-		}
+		this.puzzleArea = new WorldArea(WorldPoint.fromScene(client.getLocalPlayer().getWorldView(),startTile.getX() - 2,startTile.getY() - 5,0),WorldPoint.fromScene(client.getLocalPlayer().getWorldView(),startTile.getX() + 4, startTile.getY(),0));
 		this.tileStates = readTileStates(sceneTiles, tl);
 		this.flips = findSolution(tl);
 	}
@@ -172,6 +169,7 @@ public class LightPuzzleSolver implements PluginLifecycleComponent
 	private int readTileStates(Tile[][] sceneTiles, Point topLeft)
 	{
 		int tileStates = 0;
+		HashSet<WorldPoint> tiles = new HashSet<>();
 		for (int i = 0; i < 8; i++)
 		{
 			// middle of puzzle has no light
@@ -180,10 +178,7 @@ public class LightPuzzleSolver implements PluginLifecycleComponent
 			int x = tileIx % 3;
 			int y = tileIx / 3;
 			Tile lightTile = sceneTiles[topLeft.getX() + (x * 2)][topLeft.getY() - (y * 2)];
-			if(!initialized)
-			{
-				puzzleTiles.add(lightTile.getWorldLocation());
-			}
+			tiles.add(lightTile.getWorldLocation());
 
 			boolean active = Arrays.stream(lightTile.getGameObjects())
 				.filter(Objects::nonNull)
@@ -196,8 +191,7 @@ public class LightPuzzleSolver implements PluginLifecycleComponent
 				tileStates |= 1 << i;
 			}
 		}
-
-		initialized = true;
+		puzzleTiles = tiles;
 		return tileStates;
 	}
 
@@ -240,147 +234,150 @@ public class LightPuzzleSolver implements PluginLifecycleComponent
 		}
 		if (!completed && solved)
 		{
-			if (getFlips().stream().findFirst().isEmpty())
+			if (getFlips().isEmpty())
 			{
-				System.out.println("puzzle not complete but flips is empty");
+				log.debug("Puzzle not complete but flips is empty");
 				return;
 			}
-			if(!inPuzzleArea)
+			if(!puzzleArea.contains(client.getLocalPlayer().getWorldLocation()))
 			{
-				if(puzzleArea.contains(client.getLocalPlayer().getWorldLocation()))
+				if(!client.getLocalPlayer().isMoving())
 				{
-					inPuzzleArea = true;
-					return;
+					Movement.walkTo(puzzleArea);
 				}
-				WorldPoint firstTile = getFlips().stream().findFirst().get();
-				moveFirstTile(firstTile);
+				return;
 			}
-			else
+			if(!queueInitialized)
 			{
-				System.out.println("check path running");
-				checkPath(getFlips().stream().findFirst().get());
-            }
-            return;
+				findPathClickPoints();
+				queueInitialized = true;
+				return;
+			}
+			WorldPoint dest = clickPoints.get(flips.size()-1);
+			List<WorldPoint> path = util.createPath(client.getLocalPlayer().getWorldLocation(), dest, puzzleArea, puzzleTiles,Collections.emptySet());
+			if(path.isEmpty())
+			{
+				System.out.println("empty");
+				return;
+			}
+			Movement.walk(path.get(0));
+			int distance = client.getLocalPlayer().getWorldLocation().distanceTo(path.get(0));
+			gameTick = (int) Math.ceil((double) distance); //TODO: more accurate gametick
+			return;
         }
-		else
+		if(completed)
 		{
+			System.out.println("done");
 			scabarasManager.walkNextPuzzle();
 		}
 	}
 
-	private void checkPath(WorldPoint dest)
+	private void findPathClickPoints()
 	{
-		List<WorldPoint> path = client.getLocalPlayer().getWorldLocation().pathTo(client,dest);
-
-		WorldPoint start  = client.getLocalPlayer().getWorldLocation();
-		WorldPoint safeTile = start;
-
-		if(dest.equals(start))
+		int[][] flipsArray = new int[flips.size() + 1][2];
+		flipsArray[0][0] = client.getLocalPlayer().getWorldLocation().getWorldX();
+		flipsArray[0][1] = client.getLocalPlayer().getWorldLocation().getWorldY();
+		int index = 1;
+		for (WorldPoint tile : getFlips())
 		{
-			return;
+			flipsArray[index][0] = tile.getWorldX();
+			flipsArray[index][1] = tile.getWorldY();
+			index++;
 		}
 
-		if (path.size() == 1)
-		{
-			//if we are on a straight path check if there are more tiles on this path.
-			int distance = start.distanceTo(path.get(0));
-			WorldPoint direction =  new WorldPoint((path.get(0).getWorldX() - start.getWorldX()) / distance, (path.get(0).getWorldY() - start.getWorldY()) / distance, 0);
-			WorldPoint tile = new WorldPoint(dest.getWorldX() + (direction.getWorldX() * 2), dest.getWorldY() + (direction.getWorldY() * 2),0);
-			if(flips.contains(tile))
-			{
-				checkPath(tile);
-				return;
-			}
-		}
+		double[][] distMatrix = TSPWithoutReturn.createDistanceMatrix(flipsArray);
 
-		int count = 0;
-		for (WorldPoint p : path)
+		// Solve the TSP without returning to the starting point
+		int[] result = TSPWithoutReturn.heldKarp(distMatrix);
+
+		for(int i = result.length - 1 ; i > 0; i--)
 		{
-			int distance = start.distanceTo(p);
-			WorldPoint direction =  new WorldPoint((p.getWorldX() - start.getWorldX()) / distance, (p.getWorldY() - start.getWorldY()) / distance, 0);
-			for(int i = 1; i <= distance; i++)
-			{
-				count++;
-				WorldPoint tile = new WorldPoint(start.getWorldX() + (i * direction.getWorldX()), start.getWorldY() + (i * direction.getWorldY() ),0 );
-				if (puzzleTiles.contains(tile) && !flips.contains(tile) )
-				{
-					Movement.walk(centerTile);
-					gameTick = 2 ;
-					return;
-				}
-			}
-			start = p;
+			clickPoints.add(new WorldPoint(flipsArray[result[i]][0], flipsArray[result[i]][1],0));
+			System.out.println(Arrays.toString(flipsArray[i]));
 		}
-		Movement.walk(dest);
-		gameTick = (int) Math.ceil((double) count /2);
+		System.out.println("x" + puzzleArea.getX() + "y" + puzzleArea.getY());
+		System.out.println(clickPoints);
 	}
 
-	private void findOtherDirection(WorldPoint start,WorldPoint dest)
-	{
-		WorldPoint north = new WorldPoint(0,1,0);
-		WorldPoint south = new WorldPoint(0,-1,0);
-		WorldPoint east = new WorldPoint(1,0,1);
-		WorldPoint west = new WorldPoint(-1,0,1);
-		WorldPoint northEast = new WorldPoint(1,1,-1);
-		WorldPoint northWest = new WorldPoint(-1,1,-1);
-		WorldPoint southEast = new WorldPoint(1,-1,1);
-		WorldPoint southWest = new WorldPoint(-1,-1,1);
-		List<WorldPoint> directions = List.of(north, east, south, west,northEast, northWest, southEast, southWest);
+	public static class TSPWithoutReturn {
 
-		float distance = start.distanceTo2DHypotenuse(dest);
-		for (WorldPoint dir : directions)
-		{
-			WorldPoint step = new WorldPoint(start.getWorldX() + dir.getWorldX(), start.getWorldY() + dir.getWorldY(), 0);
-			if(!puzzleTiles.contains(step) && step.distanceTo2DHypotenuse(dest) < distance)
-			{
-				Movement.walk(step);
-				gameTick = 1;
-				return;
-			}
+		// Function to calculate the Manhattan distance between two points
+		public static double manhattanDistance(int[] p1, int[] p2) {
+			return Math.sqrt(Math.pow((p1[0] - p2[0]),2) + Math.pow( p1[1] - p2[1], 2));
 		}
-	}
 
-	private void moveFirstTile(WorldPoint dest)
-	{
-		List<WorldPoint> path = client.getLocalPlayer().getWorldLocation().pathTo(client,dest);
+		// Function to create the distance matrix based on Manhattan distance
+		public static double[][] createDistanceMatrix(int[][] goals) {
+			int n = goals.length;
+			double[][] dist = new double[n][n];
 
-		WorldPoint start  = client.getLocalPlayer().getWorldLocation();
-		WorldPoint safeTile = start;
-
-		if(dest.equals(start))
-		{
-			return;
-		}
-		int count = 0;
-		for (WorldPoint p : path)
-		{
-			int distance = start.distanceTo(p);
-			WorldPoint direction =  new WorldPoint((p.getWorldX() - start.getWorldX()) / distance, (p.getWorldY() - start.getWorldY()) / distance, 0);
-			for(int i = 1; i <= distance; i++)
-			{
-				count++;
-				WorldPoint tile = new WorldPoint(start.getWorldX() + (i * direction.getWorldX()), start.getWorldY() + (i * direction.getWorldY() ),0 );
-				if (puzzleTiles.contains(tile) && !Objects.equals(tile,dest) )
-				{
-					if (!Objects.equals(safeTile, client.getLocalPlayer().getWorldLocation()))
-					{
-						Movement.walk(safeTile);
-						gameTick = (int) Math.ceil((double) count / 2);
-                    }
-					else
-					{
-						findOtherDirection(start, dest);
-                    }
-                    return;
-                }
-				if(!puzzleTiles.contains(tile))
-				{
-					safeTile = tile;
+			for (int i = 0; i < n; i++) {
+				for (int j = 0; j < n; j++) {
+					if (i != j) {
+						dist[i][j] = manhattanDistance(goals[i], goals[j]);
+					}
 				}
 			}
-			start = p;
+			return dist;
 		}
-		Movement.walk(dest);
-		gameTick = (int) Math.ceil((double) count /2);
+
+		// Held-Karp Algorithm to find the minimum cost path without returning to the start
+		public static int[] heldKarp(double[][] dist) {
+			int n = dist.length;
+			double[][] dp = new double[1 << n][n];
+			int[][] backtrack = new int[1 << n][n];
+
+			// Initialize the dp array with a large value (representing infinity)
+			for (int i = 0; i < (1 << n); i++) {
+				for (int j = 0; j < n; j++) {
+					dp[i][j] = Integer.MAX_VALUE;
+				}
+			}
+
+			// Starting point: Starting from city 0
+			dp[1][0] = 0;
+
+			// Fill the dp and backtrack tables
+			for (int mask = 1; mask < (1 << n); mask++) {
+				for (int u = 0; u < n; u++) {
+					if ((mask & (1 << u)) == 0) continue;  // If u is not in the current subset
+
+					for (int v = 0; v < n; v++) {
+						if ((mask & (1 << v)) != 0 || u == v) continue;  // If v is already visited or u == v
+						int newMask = mask | (1 << v);
+						double newCost = dp[mask][u] + dist[u][v];
+
+						if (newCost < dp[newMask][v]) {
+							dp[newMask][v] = newCost;
+							backtrack[newMask][v] = u;  // Store the previous city
+						}
+					}
+				}
+			}
+
+			// Find the minimum cost to visit all cities (no need to return to the starting point)
+			double minCost = Integer.MAX_VALUE;
+			int lastCity = -1;
+			int finalMask = (1 << n) - 1;
+
+			for (int u = 1; u < n; u++) {
+				if (dp[finalMask][u] < minCost) {
+					minCost = dp[finalMask][u];
+					lastCity = u;
+				}
+			}
+
+			// Reconstruct the path by backtracking
+			int[] path = new int[n];
+			int mask = finalMask;
+			int currentCity = lastCity;
+			for (int i = n - 1; i >= 0; i--) {
+				path[i] = currentCity;
+				currentCity = backtrack[mask][currentCity];
+				mask ^= (1 << path[i]);  // Remove the current city from the visited set
+			}
+
+			return path;
+		}
 	}
 }

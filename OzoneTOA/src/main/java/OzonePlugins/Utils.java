@@ -329,6 +329,8 @@ public class Utils
 
         //make sure blocked does not contain our dest location
         skipBlocked[target.getWorldX()-worldArea.getX()][target.getWorldY()-worldArea.getY()] = 0;
+        blocked[target.getWorldX()-worldArea.getX()][target.getWorldY()-worldArea.getY()] = 0;
+        skipBlocked[from.getWorldX() - worldArea.getX()][from.getWorldY() - worldArea.getY()] = 0;
 
         int index1 = 0;
         bufferX[0] = currentX;
@@ -342,6 +344,7 @@ public class Utils
         {
             currentX = bufferX[index1];
             currentY = bufferY[index1];
+            boolean isCurrentSkipBlock = index1 != 0 && skipBlocked[currentX][currentY] == 1;
             index1 = index1 + 1 & 4095;
             int currentDistance = distances[currentX][currentY] + 1;
             int WorldAreaX = currentX + worldArea.getX();
@@ -349,11 +352,10 @@ public class Utils
             if ((WorldAreaX == target.getX()) && (WorldAreaY == target.getY()))
             {
                 isReachable = true;
-                System.out.println("current distance for first" + (currentDistance - 1));
                 break;
             }
 
-            if (currentX > minX && canMoveTo(currentX - 1, currentY, currentDistance, directions, blocked, skipBlocked))
+            if (currentX > minX && canMoveTo(currentX - 1, currentY, directions, blocked, skipBlocked,isCurrentSkipBlock))
             {
                 // Able to move 1 tile west
                 bufferX[index2] = currentX - 1;
@@ -363,7 +365,7 @@ public class Utils
                 distances[currentX - 1][currentY] = currentDistance;
             }
 
-            if (currentX < 127 && canMoveTo(currentX + 1, currentY, currentDistance, directions, blocked, skipBlocked))
+            if (currentX < 127 && canMoveTo(currentX + 1, currentY, directions, blocked, skipBlocked, isCurrentSkipBlock))
             {
                 // Able to move 1 tile east
                 bufferX[index2] = currentX + 1;
@@ -373,7 +375,7 @@ public class Utils
                 distances[currentX + 1][currentY] = currentDistance;
             }
 
-            if (currentY > 0 && canMoveTo(currentX, currentY - 1, currentDistance, directions, blocked, skipBlocked))
+            if (currentY > 0 && canMoveTo(currentX, currentY - 1, directions, blocked, skipBlocked, isCurrentSkipBlock))
             {
                 // Able to move 1 tile south
                 bufferX[index2] = currentX;
@@ -383,7 +385,7 @@ public class Utils
                 distances[currentX][currentY - 1] = currentDistance;
             }
 
-            if (currentY < 127 && canMoveTo(currentX, currentY + 1, currentDistance, directions, blocked, skipBlocked))
+            if (currentY < 127 && canMoveTo(currentX, currentY + 1, directions, blocked, skipBlocked, isCurrentSkipBlock))
             {
                 // Able to move 1 tile north
                 bufferX[index2] = currentX;
@@ -393,7 +395,7 @@ public class Utils
                 distances[currentX][currentY + 1] = currentDistance;
             }
 
-            if (currentX > 0 && currentY > 0 && canMoveTo(currentX - 1, currentY - 1, currentDistance, directions, blocked, skipBlocked) && (blocked[currentX - 1][currentY]) == 0 && (blocked[currentX][currentY - 1]) == 0)
+            if (currentX > 0 && currentY > 0 && canMoveTo(currentX - 1, currentY - 1, directions, blocked, skipBlocked, isCurrentSkipBlock) && (blocked[currentX - 1][currentY]) == 0 && (blocked[currentX][currentY - 1]) == 0)
             {
                 // Able to move 1 tile south-west
                 bufferX[index2] = currentX - 1;
@@ -403,7 +405,7 @@ public class Utils
                 distances[currentX - 1][currentY - 1] = currentDistance;
             }
 
-            if (currentX > 0 && currentY < 127 && canMoveTo(currentX - 1, currentY + 1, currentDistance, directions, blocked, skipBlocked) && (blocked[currentX - 1][currentY]) == 0 && (blocked[currentX][currentY + 1]) == 0)
+            if (currentX > 0 && currentY < 127 && canMoveTo(currentX - 1, currentY + 1, directions, blocked, skipBlocked, isCurrentSkipBlock) && (blocked[currentX - 1][currentY]) == 0 && (blocked[currentX][currentY + 1]) == 0)
             {
                 // Able to move 1 tile north-west
                 bufferX[index2] = currentX - 1;
@@ -413,7 +415,7 @@ public class Utils
                 distances[currentX - 1][currentY + 1] = currentDistance;
             }
 
-            if (currentX < 127 && currentY > 0 && canMoveTo(currentX + 1, currentY - 1, currentDistance, directions, blocked, skipBlocked) && (blocked[currentX + 1][currentY]) == 0 && (blocked[currentX][currentY - 1]) == 0)
+            if (currentX < 127 && currentY > 0 && canMoveTo(currentX + 1, currentY - 1, directions, blocked, skipBlocked, isCurrentSkipBlock) && (blocked[currentX + 1][currentY]) == 0 && (blocked[currentX][currentY - 1]) == 0)
             {
                 // Able to move 1 tile south-east
                 bufferX[index2] = currentX + 1;
@@ -423,7 +425,7 @@ public class Utils
                 distances[currentX + 1][currentY - 1] = currentDistance;
             }
 
-            if (currentX < 127 && currentY < 127 && canMoveTo(currentX + 1, currentY + 1, currentDistance, directions, blocked, skipBlocked) && (blocked[currentX + 1][currentY]) == 0 && (blocked[currentX][currentY + 1]) == 0)
+            if (currentX < 127 && currentY < 127 && canMoveTo(currentX + 1, currentY + 1, directions, blocked, skipBlocked, isCurrentSkipBlock) && (blocked[currentX + 1][currentY]) == 0 && (blocked[currentX][currentY + 1]) == 0)
             {
                 // Able to move 1 tile north-east
                 bufferX[index2] = currentX + 1;
@@ -445,11 +447,12 @@ public class Utils
         int index = 1;
         int directionNew;
         int directionOld;
+        int skipCounter = 0;
+        boolean skipBlockEncountered = false;
         for (directionNew = directionOld = directions[currentX][currentY]; from.getX() - worldArea.getX() != currentX || from.getY() - worldArea.getY() != currentY; directionNew = directions[currentX][currentY])
         {
-            if (directionNew != directionOld)
+            if(!isNaturalDirection(directionOld, directionNew))
             {
-                // "Corner" of the path --> new checkpoint tile
                 directionOld = directionNew;
                 bufferX[index] = currentX;
                 bufferY[index++] = currentY;
@@ -458,23 +461,43 @@ public class Utils
             if ((directionNew & 2) != 0)
             {
                 ++currentX;
-                System.out.println("west");
             }
             else if ((directionNew & 8) != 0)
             {
                 --currentX;
-                System.out.println("east");
             }
 
             if ((directionNew & 1) != 0)
             {
                 ++currentY;
-                System.out.println("south");
             }
             else if ((directionNew & 4) != 0)
             {
                 --currentY;
-                System.out.println("north");
+            }
+            if(!skipBlockEncountered)
+            {
+                if(skipBlocked[currentX][currentY] == 1)
+                {
+                    skipBlockEncountered = true;
+                    skipCounter = 0;
+                }
+            }
+            if (skipBlockEncountered)
+            {
+                if((++skipCounter & 1) == 0)
+                {
+                    bufferX[index] = currentX;
+                    bufferY[index] = currentY;
+                }
+                else
+                {
+                    if(skipBlocked[currentX][currentY] == 0)
+                    {
+                        skipBlockEncountered = false;
+                        index++;
+                    }
+                }
             }
         }
 
@@ -490,6 +513,7 @@ public class Utils
             }
             checkpointTileNumber++;
         }
+        System.out.println(checkpointTiles);
         return checkpointTiles;
     }
 
@@ -503,18 +527,39 @@ public class Utils
         return directions[x][y] == 0 && blocked[x][y] == 0;
     }
 
-    private boolean isSkipConditionMet(int distance, int x, int y, int[][] skipBlocked)
-    {
-        boolean isEvenDistance = (distance & 1) == 0;
-        return (isEvenDistance && skipBlocked[x][y] == 1) || (!isEvenDistance && skipBlocked[x][y] == 0);
-    }
-
-    private boolean canMoveTo(int x, int y, int distance, int[][] directions, int[][] blocked, int[][] skipBlocked) {
+    private boolean canMoveTo(int x, int y, int[][] directions, int[][] blocked, int[][] skipBlocked,boolean isCurrentSkipBlock) {
         boolean isNotBlocked = directions[x][y] == 0 && blocked[x][y] == 0;
-        boolean isEvenDistance = (distance & 1) == 0;
-        boolean skipCondition = (skipBlocked[x][y] == 0) || (!isEvenDistance && skipBlocked[x][y] == 1);
+        boolean skipCondition = !isCurrentSkipBlock || skipBlocked[x][y] == 0;
 
         return isNotBlocked && skipCondition;
+    }
+
+    private boolean isNaturalDirection(int directionOld, int directionNew)
+    {
+        //naturally bfs won't draw perpendicular movements as BFS would find a shorter path there with diagonal movements
+        if(directionNew != directionOld)
+        {
+            if(countSetBits(directionOld) == 1) //straight
+            {
+                return false;
+            }
+            if(countSetBits(directionNew) == 2) //diagonal
+            {
+                return false;
+            }
+            return (directionNew & directionOld) > 0;
+        }
+        return true;
+    }
+
+    private static int countSetBits(int n) {
+        int count = 0;
+        for(int i = 0; i < 4; i++)
+        {
+            count += n & 1; // Check if the least significant bit is 1
+            n >>>= 1; // Right shift (unsigned) to check the next bit
+        }
+        return count;
     }
 
     /*
