@@ -67,6 +67,8 @@ public class LightPuzzleSolver implements PluginLifecycleComponent
 	private WorldArea puzzleArea;
 
 	private List<WorldPoint> clickPoints = new ArrayList<>(8);
+	private int clickPointIndex;
+	private WorldPoint dest;
 
 	@Getter
 	private Set<WorldPoint> flips = Collections.emptySet();
@@ -253,8 +255,18 @@ public class LightPuzzleSolver implements PluginLifecycleComponent
 				queueInitialized = true;
 				return;
 			}
-			WorldPoint dest = clickPoints.get(flips.size()-1);
-			List<WorldPoint> path = util.createPath(client.getLocalPlayer().getWorldLocation(), dest, puzzleArea, puzzleTiles,Collections.emptySet());
+			if(this.dest != null)
+			{
+				if(client.getLocalPlayer().getWorldLocation().equals(dest))
+				{
+					this.dest = null;
+					clickPointIndex++;
+				}
+			}
+			this.dest = clickPoints.get(clickPointIndex);
+			HashSet<WorldPoint> blockedTiles = puzzleTiles;
+			blockedTiles.removeIf(x-> flips.contains(x));
+			List<WorldPoint> path = util.createPath(client.getLocalPlayer().getWorldLocation(), dest, puzzleArea, blockedTiles,Collections.emptySet());
 			if(path.isEmpty())
 			{
 				System.out.println("empty");
@@ -272,14 +284,12 @@ public class LightPuzzleSolver implements PluginLifecycleComponent
 		}
 	}
 
-	private void findPathClickPoints()
-	{
+	private void findPathClickPoints() {
 		int[][] flipsArray = new int[flips.size() + 1][2];
 		flipsArray[0][0] = client.getLocalPlayer().getWorldLocation().getWorldX();
 		flipsArray[0][1] = client.getLocalPlayer().getWorldLocation().getWorldY();
 		int index = 1;
-		for (WorldPoint tile : getFlips())
-		{
+		for (WorldPoint tile : getFlips()) {
 			flipsArray[index][0] = tile.getWorldX();
 			flipsArray[index][1] = tile.getWorldY();
 			index++;
@@ -290,13 +300,23 @@ public class LightPuzzleSolver implements PluginLifecycleComponent
 		// Solve the TSP without returning to the starting point
 		int[] result = TSPWithoutReturn.heldKarp(distMatrix);
 
-		for(int i = result.length - 1 ; i > 0; i--)
+		int prevDirection = 0;
+
+		index = 0;
+		for (int i = 1; i < result.length - 1; i++)
 		{
-			clickPoints.add(new WorldPoint(flipsArray[result[i]][0], flipsArray[result[i]][1],0));
-			System.out.println(Arrays.toString(flipsArray[i]));
+			//check direction
+			int currentDirection = getDirection(flipsArray[result[i]][0],flipsArray[result[i]][1],flipsArray[result[i+1]][0],flipsArray[result[i+1]][1]);
+			if (prevDirection != currentDirection)
+			{
+				clickPoints.add(new WorldPoint(flipsArray[result[i]][0],flipsArray[result[i]][1],0));
+				index++;
+			}
+			prevDirection = currentDirection;
 		}
-		System.out.println("x" + puzzleArea.getX() + "y" + puzzleArea.getY());
+		clickPoints.add(index,new WorldPoint(flipsArray[result[result.length - 1]][0],flipsArray[result[result.length - 1]][1],0));
 		System.out.println(clickPoints);
+		this.clickPointIndex = 0;
 	}
 
 	public static class TSPWithoutReturn {
@@ -379,5 +399,32 @@ public class LightPuzzleSolver implements PluginLifecycleComponent
 
 			return path;
 		}
+	}
+
+	private int getDirection(int x1, int y1, int x2, int y2)
+	{
+		double directionX = x2 - x1;
+		double directionY = y2 - y1;
+
+		int direction = 0;
+
+		if(directionX > 0)
+		{
+			direction = 1; //East
+		}
+		if(directionX < 0)
+		{
+			direction = 2; //West
+		}
+
+		if (directionY > 0)
+		{
+			direction |= 4; //north
+		}
+		if(directionY < 0)
+		{
+			direction |= 8; //south
+		}
+		return direction;
 	}
 }
