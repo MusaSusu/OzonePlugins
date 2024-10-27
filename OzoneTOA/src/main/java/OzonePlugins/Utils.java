@@ -395,7 +395,7 @@ public class Utils
                 distances[currentX][currentY + 1] = currentDistance;
             }
 
-            if (currentX > 0 && currentY > 0 && canMoveTo(currentX - 1, currentY - 1, directions, blocked, skipBlocked, isCurrentSkipBlock) && (blocked[currentX - 1][currentY]) == 0 && (blocked[currentX][currentY - 1]) == 0)
+            if (currentX > 0 && currentY > 0 && canMoveTo(currentX - 1, currentY - 1, directions, blocked, skipBlocked, isCurrentSkipBlock) && ((blocked[currentX - 1][currentY]) == 0 || (blocked[currentX][currentY - 1]) == 0))
             {
                 // Able to move 1 tile south-west
                 bufferX[index2] = currentX - 1;
@@ -405,7 +405,7 @@ public class Utils
                 distances[currentX - 1][currentY - 1] = currentDistance;
             }
 
-            if (currentX > 0 && currentY < 127 && canMoveTo(currentX - 1, currentY + 1, directions, blocked, skipBlocked, isCurrentSkipBlock) && (blocked[currentX - 1][currentY]) == 0 && (blocked[currentX][currentY + 1]) == 0)
+            if (currentX > 0 && currentY < 127 && canMoveTo(currentX - 1, currentY + 1, directions, blocked, skipBlocked, isCurrentSkipBlock) && ((blocked[currentX - 1][currentY]) == 0 || (blocked[currentX][currentY + 1]) == 0))
             {
                 // Able to move 1 tile north-west
                 bufferX[index2] = currentX - 1;
@@ -415,7 +415,7 @@ public class Utils
                 distances[currentX - 1][currentY + 1] = currentDistance;
             }
 
-            if (currentX < 127 && currentY > 0 && canMoveTo(currentX + 1, currentY - 1, directions, blocked, skipBlocked, isCurrentSkipBlock) && (blocked[currentX + 1][currentY]) == 0 && (blocked[currentX][currentY - 1]) == 0)
+            if (currentX < 127 && currentY > 0 && canMoveTo(currentX + 1, currentY - 1, directions, blocked, skipBlocked, isCurrentSkipBlock) && ((blocked[currentX + 1][currentY]) == 0 || (blocked[currentX][currentY - 1]) == 0))
             {
                 // Able to move 1 tile south-east
                 bufferX[index2] = currentX + 1;
@@ -425,7 +425,7 @@ public class Utils
                 distances[currentX + 1][currentY - 1] = currentDistance;
             }
 
-            if (currentX < 127 && currentY < 127 && canMoveTo(currentX + 1, currentY + 1, directions, blocked, skipBlocked, isCurrentSkipBlock) && (blocked[currentX + 1][currentY]) == 0 && (blocked[currentX][currentY + 1]) == 0)
+            if (currentX < 127 && currentY < 127 && canMoveTo(currentX + 1, currentY + 1, directions, blocked, skipBlocked, isCurrentSkipBlock) && ((blocked[currentX + 1][currentY]) == 0 || (blocked[currentX][currentY + 1]) == 0))
             {
                 // Able to move 1 tile north-east
                 bufferX[index2] = currentX + 1;
@@ -451,11 +451,14 @@ public class Utils
         boolean skipBlockEncountered = false;
         for (directionNew = directionOld = directions[currentX][currentY]; from.getX() - worldArea.getX() != currentX || from.getY() - worldArea.getY() != currentY; directionNew = directions[currentX][currentY])
         {
-            if(!isNaturalDirection(directionOld, directionNew))
+            if(directionNew != directionOld)
             {
+                if(!isNaturalDirection(directionOld, directionNew))
+                {
+                    bufferX[index] = currentX;
+                    bufferY[index++] = currentY;
+                }
                 directionOld = directionNew;
-                bufferX[index] = currentX;
-                bufferY[index++] = currentY;
             }
 
             if ((directionNew & 2) != 0)
@@ -537,19 +540,15 @@ public class Utils
     private boolean isNaturalDirection(int directionOld, int directionNew)
     {
         //naturally bfs won't draw perpendicular movements as BFS would find a shorter path there with diagonal movements
-        if(directionNew != directionOld)
+        if(countSetBits(directionOld) == 1) //straight
         {
-            if(countSetBits(directionOld) == 1) //straight
-            {
-                return false;
-            }
-            if(countSetBits(directionNew) == 2) //diagonal
-            {
-                return false;
-            }
-            return (directionNew & directionOld) > 0;
+            return false;
         }
-        return true;
+        if(countSetBits(directionNew) == 2) //diagonal
+        {
+            return false;
+        }
+        return (directionNew & directionOld) > 0;
     }
 
     private static int countSetBits(int n) {
@@ -560,6 +559,111 @@ public class Utils
             n >>>= 1; // Right shift (unsigned) to check the next bit
         }
         return count;
+    }
+
+    public int getDirection(int x1, int y1, int x2, int y2)
+    {
+        double directionX = x2 - x1;
+        double directionY = y2 - y1;
+
+        int direction = 0;
+
+        if(directionX > 0)
+        {
+            direction = 1; //East
+        }
+        if(directionX < 0)
+        {
+            direction = 2; //West
+        }
+
+        if (directionY > 0)
+        {
+            direction |= 4; //north
+        }
+        if(directionY < 0)
+        {
+            direction |= 8; //south
+        }
+        return direction;
+    }
+
+    public double manhattanDistance(int[] p1, int[] p2) {
+        return Math.sqrt(Math.pow((p1[0] - p2[0]),2) + Math.pow( p1[1] - p2[1], 2));
+    }
+
+    // Function to create the distance matrix based on Manhattan distance
+    public double[][] createDistanceMatrix(int[][] goals) {
+        int n = goals.length;
+        double[][] dist = new double[n][n];
+
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                if (i != j) {
+                    dist[i][j] = manhattanDistance(goals[i], goals[j]);
+                }
+            }
+        }
+        return dist;
+    }
+
+    // Held-Karp Algorithm to find the minimum cost path without returning to the start
+    public int[] heldKarp(double[][] dist) {
+        int n = dist.length;
+        double[][] dp = new double[1 << n][n];
+        int[][] backtrack = new int[1 << n][n];
+
+        // Initialize the dp array with a large value (representing infinity)
+        for (int i = 0; i < (1 << n); i++) {
+            for (int j = 0; j < n; j++) {
+                dp[i][j] = Integer.MAX_VALUE;
+            }
+        }
+
+        // Starting point: Starting from city 0
+        dp[1][0] = 0;
+
+        // Fill the dp and backtrack tables
+        for (int mask = 1; mask < (1 << n); mask++) {
+            for (int u = 0; u < n; u++) {
+                if ((mask & (1 << u)) == 0) continue;  // If u is not in the current subset
+
+                for (int v = 0; v < n; v++) {
+                    if ((mask & (1 << v)) != 0 || u == v) continue;  // If v is already visited or u == v
+                    int newMask = mask | (1 << v);
+                    double newCost = dp[mask][u] + dist[u][v];
+
+                    if (newCost < dp[newMask][v]) {
+                        dp[newMask][v] = newCost;
+                        backtrack[newMask][v] = u;  // Store the previous city
+                    }
+                }
+            }
+        }
+
+        // Find the minimum cost to visit all cities (no need to return to the starting point)
+        double minCost = Integer.MAX_VALUE;
+        int lastCity = -1;
+        int finalMask = (1 << n) - 1;
+
+        for (int u = 1; u < n; u++) {
+            if (dp[finalMask][u] < minCost) {
+                minCost = dp[finalMask][u];
+                lastCity = u;
+            }
+        }
+
+        // Reconstruct the path by backtracking
+        int[] path = new int[n];
+        int mask = finalMask;
+        int currentCity = lastCity;
+        for (int i = n - 1; i >= 0; i--) {
+            path[i] = currentCity;
+            currentCity = backtrack[mask][currentCity];
+            mask ^= (1 << path[i]);  // Remove the current city from the visited set
+        }
+
+        return path;
     }
 
     /*

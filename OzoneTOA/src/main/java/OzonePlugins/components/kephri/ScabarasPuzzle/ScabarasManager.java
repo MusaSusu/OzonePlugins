@@ -113,7 +113,6 @@ public class ScabarasManager implements PluginLifecycleComponent {
                     sequencePuzzleSolver.run();
                     break;
                 case MATCHING_PUZZLE:
-
                 case END: {
 
                 }
@@ -146,6 +145,7 @@ public class ScabarasManager implements PluginLifecycleComponent {
             if(!client.getLocalPlayer().isMoving())
             {
                 layoutConfigurer.getPlatform().interact(0);
+                this.scabarasState = ScabarasState.MATCHING_PUZZLE;
             }
             //walk to matching puzzle
         }

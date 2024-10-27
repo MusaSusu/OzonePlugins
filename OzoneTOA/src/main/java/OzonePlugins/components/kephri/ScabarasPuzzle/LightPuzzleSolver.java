@@ -4,6 +4,7 @@ import OzonePlugins.Utils;
 import OzonePlugins.data.RaidState;
 import OzonePlugins.data.RaidRoom;
 import OzonePlugins.modules.PluginLifecycleComponent;
+import com.google.common.collect.Sets;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -264,8 +265,7 @@ public class LightPuzzleSolver implements PluginLifecycleComponent
 				}
 			}
 			this.dest = clickPoints.get(clickPointIndex);
-			HashSet<WorldPoint> blockedTiles = puzzleTiles;
-			blockedTiles.removeIf(x-> flips.contains(x));
+			Sets.SetView<WorldPoint> blockedTiles = Sets.difference(puzzleTiles,getFlips());
 			List<WorldPoint> path = util.createPath(client.getLocalPlayer().getWorldLocation(), dest, puzzleArea, blockedTiles,Collections.emptySet());
 			if(path.isEmpty())
 			{
@@ -295,10 +295,10 @@ public class LightPuzzleSolver implements PluginLifecycleComponent
 			index++;
 		}
 
-		double[][] distMatrix = TSPWithoutReturn.createDistanceMatrix(flipsArray);
+		double[][] distMatrix = util.createDistanceMatrix(flipsArray);
 
 		// Solve the TSP without returning to the starting point
-		int[] result = TSPWithoutReturn.heldKarp(distMatrix);
+		int[] result = util.heldKarp(distMatrix);
 
 		int prevDirection = 0;
 
@@ -306,7 +306,7 @@ public class LightPuzzleSolver implements PluginLifecycleComponent
 		for (int i = 1; i < result.length - 1; i++)
 		{
 			//check direction
-			int currentDirection = getDirection(flipsArray[result[i]][0],flipsArray[result[i]][1],flipsArray[result[i+1]][0],flipsArray[result[i+1]][1]);
+			int currentDirection = util.getDirection(flipsArray[result[i]][0], flipsArray[result[i]][1], flipsArray[result[i + 1]][0], flipsArray[result[i + 1]][1]);
 			if (prevDirection != currentDirection)
 			{
 				clickPoints.add(new WorldPoint(flipsArray[result[i]][0],flipsArray[result[i]][1],0));
@@ -317,114 +317,5 @@ public class LightPuzzleSolver implements PluginLifecycleComponent
 		clickPoints.add(index,new WorldPoint(flipsArray[result[result.length - 1]][0],flipsArray[result[result.length - 1]][1],0));
 		System.out.println(clickPoints);
 		this.clickPointIndex = 0;
-	}
-
-	public static class TSPWithoutReturn {
-
-		// Function to calculate the Manhattan distance between two points
-		public static double manhattanDistance(int[] p1, int[] p2) {
-			return Math.sqrt(Math.pow((p1[0] - p2[0]),2) + Math.pow( p1[1] - p2[1], 2));
-		}
-
-		// Function to create the distance matrix based on Manhattan distance
-		public static double[][] createDistanceMatrix(int[][] goals) {
-			int n = goals.length;
-			double[][] dist = new double[n][n];
-
-			for (int i = 0; i < n; i++) {
-				for (int j = 0; j < n; j++) {
-					if (i != j) {
-						dist[i][j] = manhattanDistance(goals[i], goals[j]);
-					}
-				}
-			}
-			return dist;
-		}
-
-		// Held-Karp Algorithm to find the minimum cost path without returning to the start
-		public static int[] heldKarp(double[][] dist) {
-			int n = dist.length;
-			double[][] dp = new double[1 << n][n];
-			int[][] backtrack = new int[1 << n][n];
-
-			// Initialize the dp array with a large value (representing infinity)
-			for (int i = 0; i < (1 << n); i++) {
-				for (int j = 0; j < n; j++) {
-					dp[i][j] = Integer.MAX_VALUE;
-				}
-			}
-
-			// Starting point: Starting from city 0
-			dp[1][0] = 0;
-
-			// Fill the dp and backtrack tables
-			for (int mask = 1; mask < (1 << n); mask++) {
-				for (int u = 0; u < n; u++) {
-					if ((mask & (1 << u)) == 0) continue;  // If u is not in the current subset
-
-					for (int v = 0; v < n; v++) {
-						if ((mask & (1 << v)) != 0 || u == v) continue;  // If v is already visited or u == v
-						int newMask = mask | (1 << v);
-						double newCost = dp[mask][u] + dist[u][v];
-
-						if (newCost < dp[newMask][v]) {
-							dp[newMask][v] = newCost;
-							backtrack[newMask][v] = u;  // Store the previous city
-						}
-					}
-				}
-			}
-
-			// Find the minimum cost to visit all cities (no need to return to the starting point)
-			double minCost = Integer.MAX_VALUE;
-			int lastCity = -1;
-			int finalMask = (1 << n) - 1;
-
-			for (int u = 1; u < n; u++) {
-				if (dp[finalMask][u] < minCost) {
-					minCost = dp[finalMask][u];
-					lastCity = u;
-				}
-			}
-
-			// Reconstruct the path by backtracking
-			int[] path = new int[n];
-			int mask = finalMask;
-			int currentCity = lastCity;
-			for (int i = n - 1; i >= 0; i--) {
-				path[i] = currentCity;
-				currentCity = backtrack[mask][currentCity];
-				mask ^= (1 << path[i]);  // Remove the current city from the visited set
-			}
-
-			return path;
-		}
-	}
-
-	private int getDirection(int x1, int y1, int x2, int y2)
-	{
-		double directionX = x2 - x1;
-		double directionY = y2 - y1;
-
-		int direction = 0;
-
-		if(directionX > 0)
-		{
-			direction = 1; //East
-		}
-		if(directionX < 0)
-		{
-			direction = 2; //West
-		}
-
-		if (directionY > 0)
-		{
-			direction |= 4; //north
-		}
-		if(directionY < 0)
-		{
-			direction |= 8; //south
-		}
-		return direction;
 	}
 }

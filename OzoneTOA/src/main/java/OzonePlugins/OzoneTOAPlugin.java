@@ -168,24 +168,32 @@ public class OzoneTOAPlugin extends Plugin {
             path = playerLoc.pathTo(client,dest);
 
             WorldArea area = new WorldArea(new WorldPoint(0,0,0),10,10);
-            start = new WorldPoint(0,2,0);
-            dest = new WorldPoint(3,3,0);
+            start = new WorldPoint(4,0,0);
+            dest = new WorldPoint(2,4,0);
             HashSet<WorldPoint> blocked = new HashSet<>();
             HashSet<WorldPoint> skipBlocked = new HashSet<>();
-            skipBlocked.add(new WorldPoint(0,2,0));
-            skipBlocked.add(new WorldPoint(1,1,0));
-            skipBlocked.add(new WorldPoint(1,3,0));
-            skipBlocked.add(new WorldPoint(2,2,0));
-            skipBlocked.add(new WorldPoint(3,1,0));
-            skipBlocked.add(new WorldPoint(3,3,0));
+            blocked.add(new WorldPoint(4,2,0));
 
             long startTime = System.nanoTime();
 
             // Call your function here
-            path = util.createPath(start,dest,area,blocked,Collections.emptySet());
+            path = util.createPath(start,dest,area,blocked,skipBlocked);
 
             long endTime = System.nanoTime();
             long duration = (endTime - startTime);  // Duration in nanoseconds
+
+            System.out.println("Time taken: " + duration / 1000000 + " milliseconds");
+            System.out.println("Path: " + path);
+
+            start = new WorldPoint(1,1,0);
+            dest = new WorldPoint(2,4,0);
+            startTime = System.nanoTime();
+
+            // Call your function here
+            path = util.createPath(start,dest,area,blocked,skipBlocked);
+
+            endTime = System.nanoTime();
+            duration = (endTime - startTime);  // Duration in nanoseconds
 
             System.out.println("Time taken: " + duration / 1000000 + " milliseconds");
             System.out.println("Path: " + path);

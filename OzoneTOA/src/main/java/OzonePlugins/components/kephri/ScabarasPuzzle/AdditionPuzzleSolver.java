@@ -1,6 +1,7 @@
 package OzonePlugins.components.kephri.ScabarasPuzzle;
 
 
+import OzonePlugins.Utils;
 import OzonePlugins.data.RaidRoom;
 import OzonePlugins.data.RaidState;
 import OzonePlugins.modules.PluginLifecycleComponent;
@@ -12,6 +13,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.coords.LocalPoint;
+import net.runelite.api.coords.WorldArea;
+import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.GameObjectDespawned;
 import net.runelite.api.events.GameObjectSpawned;
@@ -20,6 +23,7 @@ import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.util.Text;
 import net.unethicalite.api.entities.TileObjects;
+import net.unethicalite.api.movement.Movement;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -98,14 +102,30 @@ public class AdditionPuzzleSolver implements PluginLifecycleComponent
 
 	private final EventBus eventBus;
 	private final Client client;
+	@Inject
+	private Utils util;
+	@Inject
+	private ScabarasManager scabarasManager;
 
+	private int gameTick;
 	private boolean solved;
 	private Set<Integer> tileStates;
 	private int targetNumber;
 	private boolean puzzleComplete;
 
+	private WorldArea puzzleArea;
+
 	@Getter
-	private Set<LocalPoint> flips = Collections.emptySet();
+	private Set<WorldPoint> flips = Collections.emptySet();
+
+	private HashSet<WorldPoint> puzzleTiles = new HashSet<>(25);
+	private boolean initialized;
+
+	private List<WorldPoint> clickPoints = new ArrayList<>();
+	private int clickPointIndex;
+	private boolean pathInitialized;
+
+	private WorldPoint dest = null;
 
 	@Override
 	public boolean isEnabled(RaidState raidState)
@@ -120,6 +140,8 @@ public class AdditionPuzzleSolver implements PluginLifecycleComponent
 
 		this.targetNumber = 0;
 		solved = false;
+		initialized = false;
+		pathInitialized = false;
 	}
 
 	@Override
@@ -190,6 +212,11 @@ public class AdditionPuzzleSolver implements PluginLifecycleComponent
 			log.debug("Failed to locate start of addition puzzle");
 			return;
 		}
+		if(puzzleArea == null)
+		{
+			WorldPoint swTile = WorldPoint.fromScene(client.getLocalPlayer().getWorldView(),tl.getX() - 3, tl.getY() - 5,0 );
+			puzzleArea = swTile.createWorldArea(7,7);
+		}
 
 		this.tileStates = readTileStates(sceneTiles, tl);
 		this.flips = findSolution(tl);
@@ -219,33 +246,42 @@ public class AdditionPuzzleSolver implements PluginLifecycleComponent
 			for (int x = 0; x < 5; x++)
 			{
 				Tile additionTile = sceneTiles[topLeft.getX() + x][topLeft.getY() - y];
+				if(!initialized)
+				{
+					this.puzzleTiles.add(additionTile.getWorldLocation());
+				}
 				boolean active = Arrays.stream(additionTile.getGameObjects())
 					.filter(Objects::nonNull)
 					.mapToInt(GameObject::getId)
 					.anyMatch(GAME_OBJECT_IDS::contains);
-
 				if (active)
 				{
 					tileStates.add(y * 5 + x);
 				}
 			}
 		}
+		initialized = true;
 
 		return tileStates;
 	}
 
 	// todo dynamic solving for when the user messes up
-	private Set<LocalPoint> findSolution(Point topLeft)
+	private Set<WorldPoint> findSolution(Point topLeft)
 	{
 		Set<Integer> remaining = Sets.difference(OPTIMAL_SOLUTIONS.get(targetNumber), this.tileStates);
 
 		return remaining.stream()
-			.map(i -> LocalPoint.fromScene(topLeft.getX() + i % 5, topLeft.getY() - i / 5))
+			.map(i -> WorldPoint.fromScene(client,topLeft.getX() + i % 5, topLeft.getY() - i / 5,0))
 			.collect(Collectors.toSet());
 	}
 
 	public void run()
 	{
+		if(gameTick > 0)
+		{
+			gameTick--;
+			return;
+		}
 		if(!puzzleComplete)
 		{
 			if(this.targetNumber < 20)
@@ -255,15 +291,76 @@ public class AdditionPuzzleSolver implements PluginLifecycleComponent
 					TileObjects.getNearest(ObjectID.ANCIENT_TABLET).interact(0);
 					return;
 				}
-				return;
-			}
+            }
+			else
+			{
+				if (!pathInitialized)
+				{
+					findPathClickPoints();
+					pathInitialized = true;
+					return;
+				}
+				if (this.dest != null)
+				{
+					if (client.getLocalPlayer().getWorldLocation().equals(dest))
+					{
+						this.dest = null;
+						clickPointIndex++;
+					}
+				}
+				if(clickPointIndex > clickPoints.size() - 1)
+				{
+					return;
+				}
+				this.dest = clickPoints.get(clickPointIndex);
+				Movement.walk(this.dest);
+				int distance = client.getLocalPlayer().getWorldLocation().distanceTo(dest);
+				gameTick = (int) Math.ceil((double) distance); //TODO: more accurate gametick
+            }
+        }
+		else
+		{
+			scabarasManager.walkNextPuzzle();
 		}
 	}
 
-	private void findOptimalWalk()
-	{
-		//find where to click
-		//find distance for time to sleep
+	private void findPathClickPoints() {
+		int[][] flipsArray = new int[flips.size() + 1][2];
+		flipsArray[0][0] = client.getLocalPlayer().getWorldLocation().getWorldX();
+		flipsArray[0][1] = client.getLocalPlayer().getWorldLocation().getWorldY();
+		int index = 1;
+		for (WorldPoint tile : getFlips()) {
+			flipsArray[index][0] = tile.getWorldX();
+			flipsArray[index][1] = tile.getWorldY();
+			index++;
+		}
 
+		double[][] distMatrix = util.createDistanceMatrix(flipsArray);
+
+		// Solve the TSP without returning to the starting point
+		int[] result = util.heldKarp(distMatrix);
+
+		List<WorldPoint> path = util.createPath(client.getLocalPlayer().getWorldLocation(),new WorldPoint(flipsArray[result[1]][0],flipsArray[result[1]][1],0),puzzleArea,puzzleTiles,Collections.emptySet());
+		for(int i = 0; i < path.size() - 1; i++)
+		{
+			clickPoints.add(path.get(i));
+		}
+
+		int prevDirection = 0;
+		index = 0;
+		for (int i = 1; i < result.length - 1; i++)
+		{
+			//check direction
+			int currentDirection = util.getDirection(flipsArray[result[i]][0], flipsArray[result[i]][1], flipsArray[result[i + 1]][0], flipsArray[result[i + 1]][1]);
+			if (prevDirection != currentDirection)
+			{
+				clickPoints.add(new WorldPoint(flipsArray[result[i]][0],flipsArray[result[i]][1],0));
+				index++;
+			}
+			prevDirection = currentDirection;
+		}
+		clickPoints.add(index,new WorldPoint(flipsArray[result[result.length - 1]][0],flipsArray[result[result.length - 1]][1],0));
+		System.out.println(clickPoints);
+		this.clickPointIndex = 0;
 	}
 }
