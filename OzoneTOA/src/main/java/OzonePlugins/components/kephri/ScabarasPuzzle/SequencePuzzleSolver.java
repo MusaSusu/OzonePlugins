@@ -37,7 +37,7 @@ public class SequencePuzzleSolver implements PluginLifecycleComponent
 	private static final int STEPPED_GAME_OBJECT_ID = 45342;
 	private static final int GRAPHICS_OBJECT_RESET = 302;
 	private static final int ANCIENT_BUTTON_ID =  ObjectID.ANCIENT_BUTTON;
-	private Point puzzleRefTile;
+	private WorldPoint puzzleRefTile;
 	private WorldArea worldArea;
 
 	private final EventBus eventBus;
@@ -66,7 +66,7 @@ public class SequencePuzzleSolver implements PluginLifecycleComponent
 	@Getter
 	private int completedTiles = 0;
 
-	private boolean puzzleFinished = false;
+	private boolean puzzleFinished;
 	private int lastDisplayTick = 0;
 	private int gameTick = 0;
 
@@ -114,18 +114,6 @@ public class SequencePuzzleSolver implements PluginLifecycleComponent
 				completedTiles++;
 				break;
 			case ANCIENT_BUTTON_ID: {
-				puzzleRefTile = e.getGameObject().getSceneMinLocation().offset(2,-2);
-				WorldPoint swTile = WorldPoint.fromScene(client,e.getGameObject().getSceneMinLocation().getX() - 1,e.getGameObject().getSceneMinLocation().getY() - 4,0);
-				Arrays.stream(SCENE_COORD_OFFSETS).forEach(
-						i -> puzzleTiles.add(WorldPoint.fromScene(
-								client,
-								puzzleRefTile.getX() + i.getX(),
-								puzzleRefTile.getY() + i.getY(),
-								0
-						))
-				);
-				worldArea = swTile.createWorldArea(7,5);
-				blockedTiles.add(e.getGameObject().getWorldLocation());
 			}
 		}
 	}
@@ -172,7 +160,14 @@ public class SequencePuzzleSolver implements PluginLifecycleComponent
 		}
 		if (!client.getLocalPlayer().isMoving() && points.isEmpty() && !puzzleFinished)
 		{
-			TileObjects.getNearest(ANCIENT_BUTTON_ID).interact(0);
+			TileObject button = TileObjects.getNearest(ANCIENT_BUTTON_ID);
+			button.interact(0);
+			puzzleRefTile = button.getWorldLocation().dx(2).dy(-2);
+			WorldPoint swTile = button.getWorldLocation().dx(-1).dy(-4);
+			Arrays.stream(SCENE_COORD_OFFSETS).forEach(
+					i -> puzzleTiles.add(puzzleRefTile.getWorldLocation().dx(i.getX()).dy(i.getY()))
+			);
+			worldArea = swTile.createWorldArea(7,5);
 			return;
 		}
 		if (completedTiles < 5 && points.size() == 5)

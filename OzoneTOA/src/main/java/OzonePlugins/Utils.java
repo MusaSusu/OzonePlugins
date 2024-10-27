@@ -516,7 +516,7 @@ public class Utils
             }
             checkpointTileNumber++;
         }
-        System.out.println(checkpointTiles);
+        System.out.println("path" + checkpointTiles);
         return checkpointTiles;
     }
 
