@@ -276,4 +276,32 @@ public class LayoutConfigurer implements PluginLifecycleComponent {
     {
         return TileObjects.getFirstAt(WorldPoint.fromScene(client.getLocalPlayer().getWorldView(),PLATFORM_LOC.getX(),PLATFORM_LOC.getY(),0),"Platform");
     }
+
+    public boolean atNextPuzzle(boolean isFirstPuzzle)
+    {
+        WorldPoint dest;
+        if(isFirstPuzzle)
+        {
+            if(state == State.HIGHLIGHT_UPPER)
+            {
+                dest = WorldPoint.fromScene(client.getLocalPlayer().getWorldView(),PASSAGE_LOWER_HALF_LOC.getX(),PASSAGE_LOWER_HALF_LOC.getY() - 1,0);
+            }
+            else
+            {
+                dest = WorldPoint.fromScene(client.getLocalPlayer().getWorldView(),PASSAGE_UPPER_HALF_LOC.getX(),PASSAGE_UPPER_HALF_LOC.getY() + 1,0);
+            }
+        }
+        else
+        {
+            if(state == State.HIGHLIGHT_UPPER)
+            {
+                dest = WorldPoint.fromScene(client.getLocalPlayer().getWorldView(),PLATFORM_LOC.getX(),PLATFORM_LOC.getY()+3,0);
+            }
+            else
+            {
+                dest = WorldPoint.fromScene(client.getLocalPlayer().getWorldView(),PLATFORM_LOC.getX(),PLATFORM_LOC.getY() - 3,0);
+            }
+        }
+        return client.getLocalPlayer().getWorldLocation().equals(dest);
+    }
 }

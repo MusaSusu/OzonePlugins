@@ -10,7 +10,6 @@ import com.google.inject.Binder;
 import com.google.inject.Provides;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
-import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldArea;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.GameTick;
@@ -168,11 +167,13 @@ public class OzoneTOAPlugin extends Plugin {
             path = playerLoc.pathTo(client,dest);
 
             WorldArea area = new WorldArea(new WorldPoint(0,0,0),10,10);
-            start = new WorldPoint(4,0,0);
-            dest = new WorldPoint(2,4,0);
+            start = new WorldPoint(0,0,0);
+            dest = new WorldPoint(1,2,0);
             HashSet<WorldPoint> blocked = new HashSet<>();
             HashSet<WorldPoint> skipBlocked = new HashSet<>();
-            blocked.add(new WorldPoint(4,2,0));
+            skipBlocked.add(new WorldPoint(0,1,0));
+            skipBlocked.add(new WorldPoint(0,3,0));
+
 
             long startTime = System.nanoTime();
 
@@ -185,8 +186,8 @@ public class OzoneTOAPlugin extends Plugin {
             System.out.println("Time taken: " + duration / 1000000 + " milliseconds");
             System.out.println("Path: " + path);
 
-            start = new WorldPoint(1,1,0);
-            dest = new WorldPoint(2,4,0);
+            start = new WorldPoint(0,1,0);
+            dest = new WorldPoint(1,4,0);
             startTime = System.nanoTime();
 
             // Call your function here

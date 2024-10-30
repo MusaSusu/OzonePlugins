@@ -442,12 +442,14 @@ public class Utils
         }
 
         // Getting path from directions and distances
+        int[] bufferTick = new int[100];
         bufferX[0] = currentX;
         bufferY[0] = currentY;
         int index = 1;
         int directionNew;
         int directionOld;
         int skipCounter = 0;
+        int counter = 0;
         boolean skipBlockEncountered = false;
         for (directionNew = directionOld = directions[currentX][currentY]; from.getX() - worldArea.getX() != currentX || from.getY() - worldArea.getY() != currentY; directionNew = directions[currentX][currentY])
         {
@@ -455,8 +457,10 @@ public class Utils
             {
                 if(!isNaturalDirection(directionOld, directionNew))
                 {
+                    bufferTick[index - 1] = counter;
                     bufferX[index] = currentX;
                     bufferY[index++] = currentY;
+
                 }
                 directionOld = directionNew;
             }
@@ -490,6 +494,7 @@ public class Utils
             {
                 if((++skipCounter & 1) == 0)
                 {
+                    bufferTick[index - 1] = counter;
                     bufferX[index] = currentX;
                     bufferY[index] = currentY;
                 }
@@ -502,7 +507,9 @@ public class Utils
                     }
                 }
             }
+            counter++;
         }
+        bufferTick[index - 1] = counter;
 
         int checkpointTileNumber = 1;
         List<WorldPoint> checkpointTiles = new ArrayList<>();
@@ -515,6 +522,11 @@ public class Utils
                 break;
             }
             checkpointTileNumber++;
+        }
+        for(int i=0;i<checkpointTiles.size();i++)
+        {
+            System.out.println(checkpointTiles.get(i));
+            System.out.println(bufferTick[i]);
         }
         System.out.println("path" + checkpointTiles);
         return checkpointTiles;

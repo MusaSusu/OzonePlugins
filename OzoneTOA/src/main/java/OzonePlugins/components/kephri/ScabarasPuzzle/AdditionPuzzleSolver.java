@@ -142,6 +142,7 @@ public class AdditionPuzzleSolver implements PluginLifecycleComponent
 		solved = false;
 		initialized = false;
 		pathInitialized = false;
+		puzzleComplete = false;
 	}
 
 	@Override
@@ -315,10 +316,12 @@ public class AdditionPuzzleSolver implements PluginLifecycleComponent
 				{
 					return;
 				}
+
 				this.dest = clickPoints.get(clickPointIndex);
 				Movement.walk(this.dest);
-				int distance = client.getLocalPlayer().getWorldLocation().distanceTo(dest);
-				gameTick = (int) Math.ceil((double) distance); //TODO: more accurate gametick
+				int distance = client.getLocalPlayer().getWorldLocation().distanceTo2D(dest);
+				System.out.println("gametick" + distance);
+				gameTick = (int) Math.ceil((double) distance / 2);
             }
         }
 		else

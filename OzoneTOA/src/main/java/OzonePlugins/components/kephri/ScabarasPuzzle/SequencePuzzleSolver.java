@@ -180,8 +180,8 @@ public class SequencePuzzleSolver implements PluginLifecycleComponent
 				return;
 			}
 			Movement.walk(path.get(0));
-			int distance = client.getLocalPlayer().getWorldLocation().distanceTo(path.get(0));
-			gameTick = (int) Math.ceil((double) distance); //TODO: more accurate gametick
+			int distance = client.getLocalPlayer().getWorldLocation().distanceTo2D(path.get(0));
+			gameTick = (int) Math.ceil((double) distance / 2); //TODO: more accurate gametick
 			return;
 		}
 		if(puzzleFinished)

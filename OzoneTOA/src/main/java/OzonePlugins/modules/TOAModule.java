@@ -21,6 +21,7 @@ public class TOAModule extends AbstractModule {
         lifecycleComponents.addBinding().to(LayoutConfigurer.class);
         lifecycleComponents.addBinding().to(SequencePuzzleSolver.class);
         lifecycleComponents.addBinding().to(LightPuzzleSolver.class);
+        lifecycleComponents.addBinding().to(MatchingPuzzleSolver.class);
 
     }
 }

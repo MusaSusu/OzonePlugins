@@ -6,6 +6,7 @@ import OzonePlugins.modules.PluginLifecycleComponent;
 import lombok.RequiredArgsConstructor;
 import net.runelite.api.Client;
 import net.runelite.api.ObjectID;
+import net.runelite.api.TileObject;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.ChatMessage;
@@ -38,6 +39,8 @@ public class ScabarasManager implements PluginLifecycleComponent {
     private LightPuzzleSolver lightPuzzleSolver;
     @Inject
     private SequencePuzzleSolver sequencePuzzleSolver;
+    @Inject
+    private MatchingPuzzleSolver matchingPuzzleSolver;
 
 
     @Override
@@ -113,8 +116,10 @@ public class ScabarasManager implements PluginLifecycleComponent {
                     sequencePuzzleSolver.run();
                     break;
                 case MATCHING_PUZZLE:
+                    matchingPuzzleSolver.run();
+                    break;
                 case END: {
-
+                    break;
                 }
             }
         }
@@ -133,19 +138,32 @@ public class ScabarasManager implements PluginLifecycleComponent {
     {
         if (isFirstPuzzle)
         {
-            if(!client.getLocalPlayer().isMoving())
+            if(layoutConfigurer.atNextPuzzle(isFirstPuzzle))
             {
-                layoutConfigurer.getPassageLocation().interact("Crawl-through");
                 this.isFirstPuzzle = false;
                 this.scabarasState = layoutConfigurer.getCurrentPuzzle(isFirstPuzzle);
+                return;
+            }
+            if(!client.getLocalPlayer().isMoving() && !client.getLocalPlayer().isAnimating())
+            {
+                TileObject passage = layoutConfigurer.getPassageLocation();
+                if(passage == null)
+                {
+                    return;
+                }
+                layoutConfigurer.getPassageLocation().interact("Crawl-through");
             }
         }
         else
         {
-            if(!client.getLocalPlayer().isMoving())
+            if (layoutConfigurer.atNextPuzzle(isFirstPuzzle))
+            {
+                this.scabarasState = ScabarasState.MATCHING_PUZZLE;
+                return;
+            }
+            if(!client.getLocalPlayer().isMoving() && !client.getLocalPlayer().isAnimating())
             {
                 layoutConfigurer.getPlatform().interact(0);
-                this.scabarasState = ScabarasState.MATCHING_PUZZLE;
             }
             //walk to matching puzzle
         }
