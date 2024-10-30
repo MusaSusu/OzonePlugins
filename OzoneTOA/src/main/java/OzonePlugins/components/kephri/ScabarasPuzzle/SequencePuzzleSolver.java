@@ -30,18 +30,16 @@ import java.util.*;
 public class SequencePuzzleSolver implements PluginLifecycleComponent
 {
 
-	@Inject
-	private Utils util;
 	private static final int GROUND_OBJECT_ID = 45340;
 	private static final int DISPLAY_GAME_OBJECT_ID = 45341;
 	private static final int STEPPED_GAME_OBJECT_ID = 45342;
 	private static final int GRAPHICS_OBJECT_RESET = 302;
-	private static final int ANCIENT_BUTTON_ID =  ObjectID.ANCIENT_BUTTON;
-	private WorldPoint puzzleRefTile;
-	private WorldArea worldArea;
+	private static final int ANCIENT_BUTTON_ID = ObjectID.ANCIENT_BUTTON;
 
 	private final EventBus eventBus;
 	private final Client client;
+	private final Utils util;
+	private final ScabarasManager scabarasManager;
 
 	private final HashSet<WorldPoint> puzzleTiles = new HashSet<>(9);
 	private final HashSet<WorldPoint> blockedTiles = new HashSet<>(1);
@@ -57,13 +55,10 @@ public class SequencePuzzleSolver implements PluginLifecycleComponent
             new Point(4, 0)
     };
 
-	@Inject
-	private ScabarasManager scabarasManager;
+	private WorldPoint puzzleRefTile;
+	private WorldArea worldArea;
 
-	@Getter
 	private final List<LocalPoint> points = new ArrayList<>(5);
-
-	@Getter
 	private int completedTiles = 0;
 
 	private boolean puzzleFinished;
@@ -113,8 +108,6 @@ public class SequencePuzzleSolver implements PluginLifecycleComponent
 			case STEPPED_GAME_OBJECT_ID:
 				completedTiles++;
 				break;
-			case ANCIENT_BUTTON_ID: {
-			}
 		}
 	}
 

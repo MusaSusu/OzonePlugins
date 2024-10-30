@@ -19,11 +19,13 @@ import net.runelite.client.eventbus.Subscribe;
 import net.unethicalite.api.entities.TileObjects;
 import net.unethicalite.api.movement.Movement;
 import net.unethicalite.api.scene.Tiles;
+import org.apache.commons.lang3.mutable.Mutable;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.awt.Color;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
 @RequiredArgsConstructor(onConstructor_ = @Inject)
@@ -102,19 +104,9 @@ public class MatchingPuzzleSolver implements PluginLifecycleComponent {
     private boolean isFlipped;
     private WorldPoint tileLocation;
     private int tileID;
+    private int counter;
 
-    @Getter
-    private final Map<String, MatchingTile> discoveredTiles = Map.of(
-            "Line", new MatchingTile(45365,45356),
-            "Knives", new MatchingTile(45366,45357),
-            "Crook", new MatchingTile(45367,45358),
-            "Diamond", new MatchingTile(45368,45359),
-            "Hand", new MatchingTile(45369,45360),
-            "Star", new MatchingTile(45370,45361),
-            "Bird", new MatchingTile(45371,45362),
-            "Wiggle", new MatchingTile(45372,45363),
-            "Boot", new MatchingTile(45373,45364)
-            );
+    private  Map<String, MatchingTile> discoveredTiles = new HashMap<>(9);
     private final Set<Integer> matchedTiles = new HashSet<>(9);
 
     @Override
@@ -127,6 +119,8 @@ public class MatchingPuzzleSolver implements PluginLifecycleComponent {
         eventBus.register(this);
         matchedTiles.clear();
         currentTile = "";
+        counter = 0;
+        initTable();
     }
 
     @Override
@@ -151,30 +145,30 @@ public class MatchingPuzzleSolver implements PluginLifecycleComponent {
                 discoveredTiles.get(name).setLocalPointN(lp);
             }
         }
-        if(id == tileID)
-        {
-            System.out.println("ongroundobjectspawned checker");
-        }
     }
 
     @Subscribe
     public void onGameObjectSpawned(GameObjectSpawned e) {
         int gameId = e.getGameObject().getId();
-        if (MATCHED_OBJECT_IDS.containsKey(gameId)) {
+        if (MATCHED_OBJECT_IDS.containsKey(gameId) && e.getGameObject().getSceneMinLocation().getX() > 62) {
             MatchingTile match = discoveredTiles.get(TILE_NAMES.get(MATCHED_OBJECT_IDS.get(gameId)));
             if (match == null) {
                 log.debug("Failed to find discovered tile for game object id {}!", gameId);
                 return;
             }
-            match.setMatched(true);
-            matchedTiles.add(gameId);
+            if(!match.isMatched())
+            {
+                match.setMatched(true);
+                matchedTiles.add(gameId);
+            };
         }
     }
 
     @Subscribe
     public void onChatMessage(ChatMessage e) {
         if (e.getMessage().startsWith("Your party failed to complete the challenge")) {
-            discoveredTiles.clear();
+            matchedTiles.clear();
+            currentTile = "";
         }
     }
 
@@ -187,7 +181,6 @@ public class MatchingPuzzleSolver implements PluginLifecycleComponent {
             }
             else
             {
-                System.out.println(currentTile);
                 this.tileLocation = null;
                 this.tileID = 0;
                 this.isFlipped = !isFlipped;
@@ -195,30 +188,38 @@ public class MatchingPuzzleSolver implements PluginLifecycleComponent {
                 {
                     currentTile = "";
                 }
-                System.out.println("onGameTick checker ");
             };
         }
         //state checker for tile to flip. Need tileLocation, TileID,
         if (gameTick > 0)
         {
-            System.out.println("gametick" + gameTick);
             gameTick--;
             return;
         }
         if (matchedTiles.size() < 9)
         {
+            WorldPoint middle = WorldPoint.fromScene(client.getLocalPlayer().getWorldView(), refTile.getX(), refTile.getY(), 0);
+            boolean southornot = (util.getDirection(middle.getX(), middle.getY(), client.getLocalPlayer().getWorldX(), client.getLocalPlayer().getWorldY()) & 8) == 0;
+            int distance = Integer.MAX_VALUE;
+            String current = "";
             if(currentTile.isEmpty())
             {
                 for(Map.Entry<String, MatchingTile> entry : discoveredTiles.entrySet())
                 {
                     if(!entry.getValue().isMatched())
                     {
-                        currentTile = entry.getKey();
+                        LocalPoint temp = southornot ? entry.getValue().getLocalPointS() : entry.getValue().getLocalPointN();
+                        int newDistance = client.getLocalPlayer().getWorldLocation().distanceTo2D(WorldPoint.fromLocal(client,temp));
+                        if(newDistance < distance)
+                        {
+                            distance = newDistance;
+                            current = entry.getKey();
+                        }
                     }
                 }
+                currentTile = current;
             }
             LocalPoint dest;
-            WorldPoint middle = WorldPoint.fromScene(client.getLocalPlayer().getWorldView(), refTile.getX(), refTile.getY(), 0);
             int direction = util.getDirection(middle.getX(), middle.getY(), client.getLocalPlayer().getWorldX(), client.getLocalPlayer().getWorldY());
             if (!isFlipped)
             {
@@ -239,5 +240,19 @@ public class MatchingPuzzleSolver implements PluginLifecycleComponent {
             System.out.println("GO TO BOSS!!");
         }
 
+    }
+
+    private void initTable()
+    {
+        this.discoveredTiles.clear();
+        this.discoveredTiles.put("Line", new MatchingTile(45365,45356));
+        this.discoveredTiles.put("Knives", new MatchingTile(45366,45357));
+        this.discoveredTiles.put("Crook", new MatchingTile(45367,45358));
+        this.discoveredTiles.put("Diamond", new MatchingTile(45368,45359));
+        this.discoveredTiles.put("Hand", new MatchingTile(45369,45360));
+        this.discoveredTiles.put("Star", new MatchingTile(45370,45361));
+        this.discoveredTiles.put("Bird", new MatchingTile(45371,45362));
+        this.discoveredTiles.put("Wiggle", new MatchingTile(45372,45363));
+        this.discoveredTiles.put("Boot", new MatchingTile(45373,45364));
     }
 }

@@ -18,6 +18,11 @@ import net.unethicalite.api.movement.Movement;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+/*
+Current antibots. Automatically sets to true all the matching tiles by spawning the gameobjects.
+Platform and tunnel loc is glitched.
+Possible glitch in sequence tiles
+ */
 
 @Singleton
 @RequiredArgsConstructor(onConstructor_ = @Inject)

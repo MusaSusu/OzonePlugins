@@ -107,25 +107,24 @@ public class AdditionPuzzleSolver implements PluginLifecycleComponent
 	@Inject
 	private ScabarasManager scabarasManager;
 
-	private int gameTick;
+	//states
 	private boolean solved;
-	private Set<Integer> tileStates;
-	private int targetNumber;
 	private boolean puzzleComplete;
+	private boolean initialized;
+	private boolean pathInitialized;
+	private int targetNumber;
+
+	private Set<Integer> tileStates; //active tiles
+	@Getter
+	private Set<WorldPoint> flips = Collections.emptySet(); //tiles to flip
 
 	private WorldArea puzzleArea;
-
-	@Getter
-	private Set<WorldPoint> flips = Collections.emptySet();
-
 	private HashSet<WorldPoint> puzzleTiles = new HashSet<>(25);
-	private boolean initialized;
 
 	private List<WorldPoint> clickPoints = new ArrayList<>();
 	private int clickPointIndex;
-	private boolean pathInitialized;
-
 	private WorldPoint dest = null;
+	private int gameTick;
 
 	@Override
 	public boolean isEnabled(RaidState raidState)
@@ -139,10 +138,13 @@ public class AdditionPuzzleSolver implements PluginLifecycleComponent
 		eventBus.register(this);
 
 		this.targetNumber = 0;
-		solved = false;
 		initialized = false;
 		pathInitialized = false;
 		puzzleComplete = false;
+		puzzleArea = null;
+		puzzleTiles.clear();
+		clickPoints.clear();
+		solved = false;
 	}
 
 	@Override
@@ -320,7 +322,6 @@ public class AdditionPuzzleSolver implements PluginLifecycleComponent
 				this.dest = clickPoints.get(clickPointIndex);
 				Movement.walk(this.dest);
 				int distance = client.getLocalPlayer().getWorldLocation().distanceTo2D(dest);
-				System.out.println("gametick" + distance);
 				gameTick = (int) Math.ceil((double) distance / 2);
             }
         }
@@ -366,7 +367,6 @@ public class AdditionPuzzleSolver implements PluginLifecycleComponent
 			prevDirection = currentDirection;
 		}
 		clickPoints.add(index,new WorldPoint(flipsArray[result[result.length - 1]][0],flipsArray[result[result.length - 1]][1],0));
-		System.out.println(clickPoints);
 		this.clickPointIndex = 0;
 	}
 }

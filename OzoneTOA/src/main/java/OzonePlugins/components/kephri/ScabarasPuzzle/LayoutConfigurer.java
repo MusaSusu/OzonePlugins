@@ -18,6 +18,7 @@ import net.unethicalite.api.entities.TileObjects;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -210,11 +211,11 @@ public class LayoutConfigurer implements PluginLifecycleComponent {
     public LocalPoint getFlameLocation()
     {
 
-        if (state == State.HIGHLIGHT_UPPER)
+        if (state == State.HIGHLIGHT_UPPER && flameUpper != null)
         {
             return flameUpper.getLocalLocation();
         }
-        if(state == State.HIGHLIGHT_LOWER)
+        if(state == State.HIGHLIGHT_LOWER && flameLower != null)
         {
             return flameLower.getLocalLocation();
         }
@@ -235,10 +236,29 @@ public class LayoutConfigurer implements PluginLifecycleComponent {
         }
         if (passage != null)
         {
+            System.out.println("Passage ID:" + passage.getId());
             return passage;
         }
         else
         {
+            GameObject[] list;
+            if (state == State.HIGHLIGHT_UPPER) {
+                Tile tile = client.getScene().getTiles()[client.getPlane()][44][51];
+                list = tile.getGameObjects();
+                System.out.println("Wall Object:" + tile.getWallObject().getName());
+                System.out.println("Ground Object:" + tile.getGroundObject().getName());
+            }
+            else
+            {
+                Tile tile = client.getScene().getTiles()[client.getPlane()][44][45];
+                list = tile.getGameObjects();
+                System.out.println("Wall Object:" + tile.getWallObject().getName());
+                System.out.println("Ground Object:" + tile.getGroundObject().getName());
+
+            }
+            for(GameObject tile : list){
+                System.out.println("GameObject name :" + tile.getName());
+            }
             System.out.println("passage is null");
             return null;
         }
@@ -274,7 +294,14 @@ public class LayoutConfigurer implements PluginLifecycleComponent {
 
     public TileObject getPlatform()
     {
-        return TileObjects.getFirstAt(WorldPoint.fromScene(client.getLocalPlayer().getWorldView(),PLATFORM_LOC.getX(),PLATFORM_LOC.getY(),0),"Platform");
+        TileObject platform = TileObjects.getFirstAt(WorldPoint.fromScene(client.getLocalPlayer().getWorldView(),PLATFORM_LOC.getX(),PLATFORM_LOC.getY(),0),"Platform");
+        if(platform != null)
+        {
+            System.out.println("platform id is" + platform.getActualId());
+            System.out.println("platform actual id is" + platform.getActualId());
+
+        }
+        return platform;
     }
 
     public boolean atNextPuzzle(boolean isFirstPuzzle)

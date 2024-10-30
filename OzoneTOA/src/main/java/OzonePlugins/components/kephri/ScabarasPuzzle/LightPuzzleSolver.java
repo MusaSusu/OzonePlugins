@@ -60,21 +60,18 @@ public class LightPuzzleSolver implements PluginLifecycleComponent
 	private int gameTick;
 	private boolean solved;
 	private boolean completed;
-	private boolean queueInitialized;
-	private int tileStates = -1; // bitmask northwest to southeast
 
 	private Point startTile;
-	private WorldPoint centerTile;
 	private WorldArea puzzleArea;
+	private HashSet<WorldPoint> puzzleTiles = new HashSet<>(8);
 
 	private List<WorldPoint> clickPoints = new ArrayList<>(8);
 	private int clickPointIndex;
+	private boolean clickPointsInitialized;
 	private WorldPoint dest;
 
-	@Getter
+	private int tileStates = -1; // bitmask northwest to southeast
 	private Set<WorldPoint> flips = Collections.emptySet();
-
-	private HashSet<WorldPoint> puzzleTiles = new HashSet<>(8);
 
 	@Override
 	public boolean isEnabled(RaidState raidState)
@@ -89,7 +86,7 @@ public class LightPuzzleSolver implements PluginLifecycleComponent
 
 		solved = false;
 		completed = false;
-		queueInitialized = false;
+		clickPointsInitialized = false;
 		puzzleArea = null;
 		clickPoints.clear();
 		solve();
@@ -148,7 +145,6 @@ public class LightPuzzleSolver implements PluginLifecycleComponent
 			return;
 		}
 
-		this.centerTile = new WorldPoint(startTile.getX() + 2, startTile.getY() - 2,0);
 		this.puzzleArea = new WorldArea(WorldPoint.fromScene(client.getLocalPlayer().getWorldView(),startTile.getX() - 2,startTile.getY() - 5,0),WorldPoint.fromScene(client.getLocalPlayer().getWorldView(),startTile.getX() + 4, startTile.getY(),0));
 		this.tileStates = readTileStates(sceneTiles, tl);
 		this.flips = findSolution(tl);
@@ -250,10 +246,10 @@ public class LightPuzzleSolver implements PluginLifecycleComponent
 				}
 				return;
 			}
-			if(!queueInitialized)
+			if(!clickPointsInitialized)
 			{
 				findPathClickPoints();
-				queueInitialized = true;
+				clickPointsInitialized = true;
 				return;
 			}
 			if(this.dest != null)
