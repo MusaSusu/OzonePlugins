@@ -71,6 +71,7 @@ public class LightPuzzleSolver implements PluginLifecycleComponent
 	private WorldPoint dest;
 
 	private int tileStates = -1; // bitmask northwest to southeast
+	@Getter
 	private Set<WorldPoint> flips = Collections.emptySet();
 
 	@Override

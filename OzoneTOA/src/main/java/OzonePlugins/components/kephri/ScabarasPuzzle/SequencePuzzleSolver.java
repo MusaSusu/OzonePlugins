@@ -58,6 +58,7 @@ public class SequencePuzzleSolver implements PluginLifecycleComponent
 	private WorldPoint puzzleRefTile;
 	private WorldArea worldArea;
 
+	@Getter
 	private final List<LocalPoint> points = new ArrayList<>(5);
 	private int completedTiles = 0;
 
