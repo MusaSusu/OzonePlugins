@@ -140,15 +140,6 @@ public class ScabarasManager implements PluginLifecycleComponent {
         }
     }
 
-    private boolean checkTaskComplete(LocalPoint destination)
-    {
-        if (client.getLocalPlayer().getLocalLocation() != destination)
-        {
-            return false;
-        }
-        return true;
-    }
-
     public void walkNextPuzzle()
     {
         if(layoutConfigurer.atNextPuzzle(scabarasState))
