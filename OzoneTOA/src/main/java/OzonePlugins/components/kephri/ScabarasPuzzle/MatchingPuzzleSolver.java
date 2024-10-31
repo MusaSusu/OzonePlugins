@@ -5,7 +5,6 @@ import OzonePlugins.data.RaidRoom;
 import OzonePlugins.data.RaidState;
 import OzonePlugins.modules.PluginLifecycleComponent;
 import com.google.common.collect.ImmutableMap;
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
@@ -17,15 +16,10 @@ import net.runelite.api.events.GroundObjectSpawned;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.unethicalite.api.entities.TileObjects;
-import net.unethicalite.api.movement.Movement;
-import net.unethicalite.api.scene.Tiles;
-import org.apache.commons.lang3.mutable.Mutable;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import java.awt.Color;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
 @RequiredArgsConstructor(onConstructor_ = @Inject)
@@ -95,8 +89,6 @@ public class MatchingPuzzleSolver implements PluginLifecycleComponent {
     private final ScabarasManager scabarasManager;
     private final Utils util;
 
-    private int matchedTilesCount;
-    private int gameTick;
     private Point refTile = new Point(65,50);
 
     //states
@@ -120,6 +112,7 @@ public class MatchingPuzzleSolver implements PluginLifecycleComponent {
         matchedTiles.clear();
         currentTile = "";
         counter = 0;
+        isFlipped = false;
         initTable();
     }
 
@@ -182,19 +175,17 @@ public class MatchingPuzzleSolver implements PluginLifecycleComponent {
             else
             {
                 this.tileLocation = null;
-                this.tileID = 0;
                 this.isFlipped = !isFlipped;
                 if(!isFlipped)
                 {
+                    discoveredTiles.get(currentTile).setMatched(true);
+                    matchedTiles.add(tileID);
                     currentTile = "";
+                    counter++;
+                    System.out.println("counter:" + counter);
                 }
+                this.tileID = 0;
             };
-        }
-        //state checker for tile to flip. Need tileLocation, TileID,
-        if (gameTick > 0)
-        {
-            gameTick--;
-            return;
         }
         if (matchedTiles.size() < 9)
         {
@@ -237,9 +228,8 @@ public class MatchingPuzzleSolver implements PluginLifecycleComponent {
         }
         else
         {
-            System.out.println("GO TO BOSS!!");
+            scabarasManager.setScabarasState(ScabarasState.END);
         }
-
     }
 
     private void initTable()

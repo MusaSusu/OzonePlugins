@@ -18,7 +18,6 @@ import net.unethicalite.api.entities.TileObjects;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -228,14 +227,15 @@ public class LayoutConfigurer implements PluginLifecycleComponent {
         TileObject passage;
         if (state == State.HIGHLIGHT_UPPER)
         {
-           passage = TileObjects.getFirstAt(WorldPoint.fromScene(client.getLocalPlayer().getWorldView(),PASSAGE_UPPER_HALF_LOC.getX(),PASSAGE_UPPER_HALF_LOC.getY(),0),"Passage");
+           passage = TileObjects.getFirstAt(WorldPoint.fromScene(client.getLocalPlayer().getWorldView(),PASSAGE_UPPER_HALF_LOC.getX(),PASSAGE_UPPER_HALF_LOC.getY(),0),ObjectID.PASSAGE_45343);
         }
         else
         {
-           passage = TileObjects.getFirstAt(WorldPoint.fromScene(client.getLocalPlayer().getWorldView(),PASSAGE_LOWER_HALF_LOC.getX(),PASSAGE_LOWER_HALF_LOC.getY(),0),"Passage");
+           passage = TileObjects.getFirstAt(WorldPoint.fromScene(client.getLocalPlayer().getWorldView(),PASSAGE_LOWER_HALF_LOC.getX(),PASSAGE_LOWER_HALF_LOC.getY(),0),ObjectID.PASSAGE_45343);
         }
         if (passage != null)
         {
+            System.out.println("Passage from getFirstAT");
             System.out.println("Passage ID:" + passage.getId());
             return passage;
         }
@@ -243,92 +243,92 @@ public class LayoutConfigurer implements PluginLifecycleComponent {
         {
             GameObject[] list;
             if (state == State.HIGHLIGHT_UPPER) {
-                Tile tile = client.getScene().getTiles()[client.getPlane()][44][51];
-                list = tile.getGameObjects();
-                System.out.println("Wall Object:" + tile.getWallObject().getName());
-                System.out.println("Ground Object:" + tile.getGroundObject().getName());
+                passage = client.getScene().getTiles()[client.getPlane()][44][51].getWallObject();
             }
             else
             {
-                Tile tile = client.getScene().getTiles()[client.getPlane()][44][45];
-                list = tile.getGameObjects();
-                System.out.println("Wall Object:" + tile.getWallObject().getName());
-                System.out.println("Ground Object:" + tile.getGroundObject().getName());
+                passage = client.getScene().getTiles()[client.getPlane()][44][45].getWallObject();
 
             }
-            for(GameObject tile : list){
-                System.out.println("GameObject name :" + tile.getName());
+            if (passage != null)
+            {
+                System.out.println("Passage from WallObject");
+                System.out.println("Passage ID:" + passage.getId());
+                return passage;
             }
-            System.out.println("passage is null");
             return null;
         }
     }
 
-    public ScabarasState getCurrentPuzzle(boolean isfirstPuzzle)
+    public ScabarasState getNextPuzzle(ScabarasState scabarasState)
     {
         ScabarasState room;
-        if(isfirstPuzzle)
+        if(scabarasState == ScabarasState.START)
         {
-            if (state == State.HIGHLIGHT_UPPER)
-            {
-                room = layout.get(QuadrantState.TOP_LEFT);
-            }
-            else
-            {
-                room = layout.get(QuadrantState.BOTTOM_LEFT);
-            }
+            room = state == State.HIGHLIGHT_UPPER ?  layout.get(QuadrantState.TOP_LEFT) : layout.get(QuadrantState.BOTTOM_LEFT);
         }
         else
         {
-            if (state == State.HIGHLIGHT_UPPER)
-            {
-                room = layout.get(QuadrantState.BOTTOM_RIGHT);
-            }
-            else
-            {
-                room = layout.get(QuadrantState.TOP_RIGHT);
-            }
+            room = state == State.HIGHLIGHT_UPPER ?  layout.get(QuadrantState.BOTTOM_RIGHT) : layout.get(QuadrantState.TOP_RIGHT);
         }
         return Objects.requireNonNullElse(room, ScabarasState.LIGHT_PUZZLE);
     }
 
     public TileObject getPlatform()
     {
-        TileObject platform = TileObjects.getFirstAt(WorldPoint.fromScene(client.getLocalPlayer().getWorldView(),PLATFORM_LOC.getX(),PLATFORM_LOC.getY(),0),"Platform");
+        TileObject platform;
+        platform = TileObjects.getFirstAt(WorldPoint.fromScene(client.getLocalPlayer().getWorldView(),PLATFORM_LOC.getX(),PLATFORM_LOC.getY(),0),ObjectID.PLATFORM_45396);
         if(platform != null)
         {
             System.out.println("platform id is" + platform.getActualId());
-            System.out.println("platform actual id is" + platform.getActualId());
-
+            System.out.println(" platform from getFirstAt");
+        }
+        else
+        {
+            platform = client.getScene().getTiles()[client.getPlane()][PLATFORM_LOC.getX()][PLATFORM_LOC.getY()].getWallObject();
+        }
+        if(platform != null)
+        {
+            System.out.println("platform from scene tiles");
         }
         return platform;
     }
 
-    public boolean atNextPuzzle(boolean isFirstPuzzle)
+    public boolean atNextPuzzle(ScabarasState scabarasState)
     {
-        WorldPoint dest;
-        if(isFirstPuzzle)
+        Point dest;
+        if(isFirstPuzzle(scabarasState))
         {
-            if(state == State.HIGHLIGHT_UPPER)
-            {
-                dest = WorldPoint.fromScene(client.getLocalPlayer().getWorldView(),PASSAGE_LOWER_HALF_LOC.getX(),PASSAGE_LOWER_HALF_LOC.getY() - 1,0);
-            }
-            else
-            {
-                dest = WorldPoint.fromScene(client.getLocalPlayer().getWorldView(),PASSAGE_UPPER_HALF_LOC.getX(),PASSAGE_UPPER_HALF_LOC.getY() + 1,0);
-            }
+            dest = state == State.HIGHLIGHT_UPPER ? PASSAGE_LOWER_HALF_LOC.offset(0,-1) : PASSAGE_UPPER_HALF_LOC.offset(0,1);
         }
         else
         {
-            if(state == State.HIGHLIGHT_UPPER)
-            {
-                dest = WorldPoint.fromScene(client.getLocalPlayer().getWorldView(),PLATFORM_LOC.getX(),PLATFORM_LOC.getY()+3,0);
-            }
-            else
-            {
-                dest = WorldPoint.fromScene(client.getLocalPlayer().getWorldView(),PLATFORM_LOC.getX(),PLATFORM_LOC.getY() - 3,0);
-            }
+            dest = state == State.HIGHLIGHT_UPPER ? PLATFORM_LOC.offset(0,3) : PLATFORM_LOC.offset(0,-3);
         }
-        return client.getLocalPlayer().getWorldLocation().equals(dest);
+        return client.getLocalPlayer().distanceTo(WorldPoint.fromScene(client.getLocalPlayer().getWorldView(),dest.getX(),dest.getY(),0)) <= 0;
+    }
+
+    public TileObject getObstacle(ScabarasState scabarasState)
+    {
+        if (isFirstPuzzle(scabarasState))
+        {
+            return getPassageLocation();
+        }
+        else
+        {
+            return getPlatform();
+        }
+    }
+
+    public boolean isFirstPuzzle(ScabarasState scabarasState)
+    {
+        if(state == State.HIGHLIGHT_UPPER)
+        {
+            return layout.get(QuadrantState.TOP_LEFT).equals(scabarasState);
+        }
+        else
+        {
+            return layout.get(QuadrantState.BOTTOM_LEFT).equals(scabarasState);
+        }
     }
 }

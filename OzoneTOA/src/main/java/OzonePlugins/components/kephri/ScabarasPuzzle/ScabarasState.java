@@ -15,9 +15,8 @@ public enum ScabarasState {
     LIGHT_PUZZLE("Light Puzzle"),
     OBELISK_PUZZLE("Obelisk Puzzle"),
     MATCHING_PUZZLE("Matching Puzzle"),
-    STEPPING_STONE("Stepping Stone"),
     END("End")
-        ;
+    ;
 
     private final String name;
 }

@@ -3,7 +3,9 @@ package OzonePlugins.components.kephri.ScabarasPuzzle;
 import OzonePlugins.data.RaidRoom;
 import OzonePlugins.data.RaidState;
 import OzonePlugins.modules.PluginLifecycleComponent;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import net.runelite.api.Client;
 import net.runelite.api.ObjectID;
 import net.runelite.api.TileObject;
@@ -12,9 +14,7 @@ import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
-import net.unethicalite.api.entities.Entities;
 import net.unethicalite.api.entities.TileObjects;
-import net.unethicalite.api.movement.Movement;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -31,10 +31,11 @@ public class ScabarasManager implements PluginLifecycleComponent {
     private final Client client;
     private final EventBus eventBus;
 
+    @Getter
+    @Setter
     private ScabarasState scabarasState;
     private int gameTicks = 0;
     private int delayTicks;
-    private boolean isFirstPuzzle;
 
     @Inject
     private LayoutConfigurer layoutConfigurer;
@@ -70,7 +71,6 @@ public class ScabarasManager implements PluginLifecycleComponent {
 
     private void reset(){
         this.scabarasState = ScabarasState.START;
-        isFirstPuzzle = true;
         delayTicks = 4;
     }
 
@@ -99,7 +99,7 @@ public class ScabarasManager implements PluginLifecycleComponent {
                         if(client.getLocalPlayer().getLocalLocation().distanceTo(destination) == 0)
                         {
                             System.out.println("gameTick on arrive: " +  gameTicks);
-                            this.scabarasState = layoutConfigurer.getCurrentPuzzle(isFirstPuzzle);
+                            this.scabarasState = layoutConfigurer.getNextPuzzle(scabarasState);
                             break;
                         }
                         if(!client.getLocalPlayer().isMoving())
@@ -124,6 +124,16 @@ public class ScabarasManager implements PluginLifecycleComponent {
                     matchingPuzzleSolver.run();
                     break;
                 case END: {
+                    if(!client.getLocalPlayer().isMoving())
+                    {
+                        TileObject entry = TileObjects.getFirstSurrounding(WorldPoint.fromScene(client.getLocalPlayer().getWorldView(),78,48,0),3, ObjectID.ENTRY_45337);
+                        if(entry == null)
+                        {
+                            System.out.println("Entry null");
+                            return;
+                        }
+                        entry.interact("Quick-Enter");
+                    }
                     break;
                 }
             }
@@ -141,36 +151,20 @@ public class ScabarasManager implements PluginLifecycleComponent {
 
     public void walkNextPuzzle()
     {
-        if (isFirstPuzzle)
+        if(layoutConfigurer.atNextPuzzle(scabarasState))
         {
-            if(layoutConfigurer.atNextPuzzle(isFirstPuzzle))
-            {
-                this.isFirstPuzzle = false;
-                this.scabarasState = layoutConfigurer.getCurrentPuzzle(isFirstPuzzle);
-                return;
-            }
-            if(!client.getLocalPlayer().isMoving() && !client.getLocalPlayer().isAnimating())
-            {
-                TileObject passage = layoutConfigurer.getPassageLocation();
-                if(passage == null)
-                {
-                    return;
-                }
-                layoutConfigurer.getPassageLocation().interact("Crawl-through");
-            }
+            this.scabarasState = layoutConfigurer.isFirstPuzzle(scabarasState) ? layoutConfigurer.getNextPuzzle(scabarasState) : ScabarasState.MATCHING_PUZZLE;
+            return;
         }
-        else
+        if(!client.getLocalPlayer().isMoving() && !client.getLocalPlayer().isAnimating())
         {
-            if (layoutConfigurer.atNextPuzzle(isFirstPuzzle))
+            TileObject passage = layoutConfigurer.getObstacle(scabarasState);
+            if(passage == null)
             {
-                this.scabarasState = ScabarasState.MATCHING_PUZZLE;
+                System.out.println("Passage null");
                 return;
             }
-            if(!client.getLocalPlayer().isMoving() && !client.getLocalPlayer().isAnimating())
-            {
-                layoutConfigurer.getPlatform().interact(0);
-            }
-            //walk to matching puzzle
+            passage.interact(0);
         }
     }
 

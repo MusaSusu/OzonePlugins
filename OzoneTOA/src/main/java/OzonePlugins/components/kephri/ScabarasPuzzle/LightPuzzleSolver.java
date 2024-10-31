@@ -56,6 +56,7 @@ public class LightPuzzleSolver implements PluginLifecycleComponent
 
 	private final EventBus eventBus;
 	private final Client client;
+	private final LayoutConfigurer layoutConfigurer;
 
 	private int gameTick;
 	private boolean solved;
@@ -282,7 +283,7 @@ public class LightPuzzleSolver implements PluginLifecycleComponent
 	}
 
 	private void findPathClickPoints() {
-		int[][] flipsArray = new int[flips.size() + 1][2];
+		int[][] flipsArray = new int[flips.size() + 2][2];
 		flipsArray[0][0] = client.getLocalPlayer().getWorldLocation().getWorldX();
 		flipsArray[0][1] = client.getLocalPlayer().getWorldLocation().getWorldY();
 		int index = 1;
@@ -291,6 +292,9 @@ public class LightPuzzleSolver implements PluginLifecycleComponent
 			flipsArray[index][1] = tile.getWorldY();
 			index++;
 		}
+		TileObject nextLoc = layoutConfigurer.getObstacle(ScabarasState.LIGHT_PUZZLE);
+		flipsArray[index][0] = nextLoc.getWorldLocation().getWorldX();
+		flipsArray[index][1] = nextLoc.getWorldLocation().getWorldY();
 
 		double[][] distMatrix = util.createDistanceMatrix(flipsArray);
 
@@ -302,7 +306,7 @@ public class LightPuzzleSolver implements PluginLifecycleComponent
 		index = 0;
 		for (int i = 1; i < result.length - 1; i++)
 		{
-			//check direction
+			//Using direction we can check if there is another tile further down and save a click.
 			int currentDirection = util.getDirection(flipsArray[result[i]][0], flipsArray[result[i]][1], flipsArray[result[i + 1]][0], flipsArray[result[i + 1]][1]);
 			if (prevDirection != currentDirection)
 			{

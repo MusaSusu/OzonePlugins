@@ -100,12 +100,11 @@ public class AdditionPuzzleSolver implements PluginLifecycleComponent
 
 	private static final Pattern TARGET_NUMBER_PATTERN = Pattern.compile("The number (\\d+) has been hastily chipped into the stone.");
 
-	private final EventBus eventBus;
 	private final Client client;
-	@Inject
-	private Utils util;
-	@Inject
-	private ScabarasManager scabarasManager;
+	private final EventBus eventBus;
+	private final Utils util;
+	private final ScabarasManager scabarasManager;
+	private final LayoutConfigurer layoutConfigurer;
 
 	//states
 	private boolean solved;
@@ -332,7 +331,7 @@ public class AdditionPuzzleSolver implements PluginLifecycleComponent
 	}
 
 	private void findPathClickPoints() {
-		int[][] flipsArray = new int[flips.size() + 1][2];
+		int[][] flipsArray = new int[flips.size() + 2][2];
 		flipsArray[0][0] = client.getLocalPlayer().getWorldLocation().getWorldX();
 		flipsArray[0][1] = client.getLocalPlayer().getWorldLocation().getWorldY();
 		int index = 1;
@@ -341,6 +340,9 @@ public class AdditionPuzzleSolver implements PluginLifecycleComponent
 			flipsArray[index][1] = tile.getWorldY();
 			index++;
 		}
+		TileObject nextLoc = layoutConfigurer.getObstacle(ScabarasState.LIGHT_PUZZLE);
+		flipsArray[index][0] = nextLoc.getWorldLocation().getWorldX();
+		flipsArray[index][1] = nextLoc.getWorldLocation().getWorldY();
 
 		double[][] distMatrix = util.createDistanceMatrix(flipsArray);
 
